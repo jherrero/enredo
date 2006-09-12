@@ -72,54 +72,50 @@ bool Graph::populate_from_file(char *filename)
       continue;
     }
     bool error = false;
-    string anchor1_id;
-    string species1;
-    string chr1;
-    int start1;
-    int end1;
-    string strand1;
-    string anchor2_id;
-    string species2;
-    string chr2;
-    int start2;
-    int end2;
-    string strand2;
+    string this_anchor_id;
+    string this_species;
+    string this_chr;
+    int this_start;
+    int this_end;
+    string this_strand;
+    float this_score;
 
     stringstream streamline;
     streamline << line;
     streamline
-        >> anchor1_id >> species1 >> chr1 >> start1 >> end1 >> strand1;
+        >> this_anchor_id >> this_species >> this_chr
+        >> this_start >> this_end >> this_strand >> this_score;
     if (streamline.fail()) {
       cerr << "Error reading line (" << line_counter << ")<" << line << ">" << endl;
       inputfile.close();
       return false;
     }
-    if (start1 > end1) {
+    if (this_start > this_end) {
       cerr << "start cannot be larger than end in <" << line << ">" << endl;
       inputfile.close();
       return false;
     }
-    if (strand1 != "1" and strand1 != "0" and strand1 != "-1" and strand1 != "+" and strand1 != "-") {
-      cerr << "strand must be 1 or -1 in <" << line << ">" << endl;
+    if (this_strand != "+" and this_strand != "-") {
+      cerr << "strand must be + or - in <" << line << ">" << endl;
       inputfile.close();
       return false;
     }
-    Anchor *anchor1 = this->get_Anchor(anchor1_id);
-    if (!anchor1) {
+    Anchor *anchor = this->get_Anchor(this_anchor_id);
+    if (!anchor) {
       cerr << "Out of memory" << endl;
       return false;
     }
-    if (last_species == species1 and
-        last_chr == chr1 and
-        last_end < start1) {
-      Link *this_link = anchor1->get_direct_Link(last_anchor);
-      short this_strand;
-      if (last_anchor == anchor1) {
-        this_strand = 0;
+    if (last_species == this_species and
+        last_chr == this_chr and
+        last_end < this_start) {
+      Link *this_link = anchor->get_direct_Link(last_anchor);
+      short this_link_strand;
+      if (last_anchor == anchor) {
+        this_link_strand = 0;
       } else if (last_anchor == *this_link->anchor_list.begin()) {
-        this_strand = 1;
-      } else if (anchor1 == *this_link->anchor_list.begin()) {
-        this_strand = -1;
+        this_link_strand = 1;
+      } else if (anchor == *this_link->anchor_list.begin()) {
+        this_link_strand = -1;
       } else {
         cerr << "Error";
         exit(1);
@@ -135,77 +131,19 @@ bool Graph::populate_from_file(char *filename)
         this_chr = new string(last_chr);
         chrs[last_chr] = this_chr;
       }
-      this_link->add_tag(this_species, this_chr, last_start, end1, this_strand);
+      this_link->add_tag(this_species, this_chr, last_start, this_end, this_link_strand);
     }
-    last_anchor = anchor1;
-    last_species = species1;
-    last_chr = chr1;
-    last_start = start1;
-    last_end = end1;
-    last_strand = strand1;
+    last_anchor = anchor;
+    last_species = this_species;
+    last_chr = this_chr;
+    last_start = this_start;
+    last_end = this_end;
+    last_strand = this_strand;
 
-    streamline
-        >> anchor2_id >> species2 >> chr2 >> start2 >> end2 >> strand2;
-    if (!streamline.fail()) {
-      if (start2 > end2) {
-        cerr << "start cannot be larger than end in <" << line << ">" << endl;
-        inputfile.close();
-        return false;
-      }
-      if (strand2 != "1" and strand2 != "0" and strand2 != "-1" and strand2 != "+" and strand2 != "-") {
-        cerr << "strand must be 1 or -1 in <" << line << ">" << endl;
-        inputfile.close();
-        return false;
-      }
-      if (species1 != species2) {
-        cerr << "species1 and species2 must match in <" << line << ">" << endl;
-        inputfile.close();
-        return false;
-      }
-      Anchor *anchor2 = this->get_Anchor(anchor2_id);
-      if (anchor2 == NULL) {
-        cerr << "Out of memory" << endl;
-        return false;
-      }
-      if (last_species == species2 and
-          last_chr == chr2 and
-          last_end < start2) {
-        Link *this_link = anchor2->get_direct_Link(last_anchor);
-        short this_strand;
-        if (last_anchor == anchor2) {
-          this_strand = 0;
-        } else if (last_anchor == *this_link->anchor_list.begin()) {
-          this_strand = 1;
-        } else if (anchor2 == *this_link->anchor_list.begin()) {
-          this_strand = -1;
-        } else {
-          cerr << "Error";
-          exit(1);
-        }
-        string *this_species = species[last_species];
-        if (!this_species) {
-          cout << "New species " << last_species << endl;
-          this_species = new string(last_species);
-          species[last_species] = this_species;
-        }
-        string *this_chr = chrs[last_chr];
-        if (!this_chr) {
-          this_chr = new string(last_chr);
-          chrs[last_chr] = this_chr;
-        }
-        this_link->add_tag(this_species, this_chr, last_start, end2, this_strand);
-      }
-      last_anchor = anchor2;
-      last_species = species2;
-      last_chr = chr2;
-      last_start = start2;
-      last_end = end2;
-      last_strand = strand2;
-    }
     line_counter++;
-    if (!(line_counter % 10000)) {
+//     if (!(line_counter % 10000)) {
 //       cerr << "Line " << line_counter << endl;
-    }
+//     }
   }
   inputfile.close();
   cout << "There are "<< anchors.size() << " Anchors in this graph." << endl;
