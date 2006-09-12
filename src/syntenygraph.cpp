@@ -21,6 +21,7 @@ int main(int argc, char *argv[])
   int min_length = 100000;
   int min_regions = 2;
   int min_anchors = 3;
+  int path_dissimilarity = 0;
   bool help = false;
   bool ret;
   string this_arg;
@@ -57,19 +58,25 @@ int main(int argc, char *argv[])
   }
 //   my_graph.print();
 
-  my_graph.minimize();
-  my_graph.merge_alternative_paths(1);
-//   string kk;
-//   cin >> kk;
-  my_graph.minimize();
-  my_graph.merge_alternative_paths(2);
-//   cin >> kk;
-  my_graph.minimize();
-//   my_graph.merge_alternative_paths(3);
-//   cin >> kk;
-//   my_graph.minimize();
+  cout << endl
+      << " Stats before minimizing the Graph:" << endl
+      << "====================================" << endl;
+  my_graph.print_stats();
 
-  my_graph.print();
+  my_graph.minimize();
+  for (int a = 1; a < path_dissimilarity; a++) {
+    my_graph.merge_alternative_paths(a);
+    my_graph.minimize();
+  }
+
+  cout << endl
+      << " Stats after minimizing the Graph:" << endl
+      << "===================================" << endl;
+  my_graph.print_stats();
+
+  cout << endl
+      << " Resulting blocks:" << endl
+      << "===================================" << endl;
   my_graph.print_links(min_anchors, min_regions, min_length);
 
   return EXIT_SUCCESS;

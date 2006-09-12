@@ -146,39 +146,6 @@ bool Graph::populate_from_file(char *filename)
 //     }
   }
   inputfile.close();
-  cout << "There are "<< anchors.size() << " Anchors in this graph." << endl;
-  int hist[5] = {0,0,0,0,0};
-  for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
-//     cout << "Anchor " << it->second->id << endl;
-    for (std::list<Link*>::iterator p_link = it->second->links.begin(); p_link != it->second->links.end(); p_link++) {
-//       cout << "  " << (*p_link)->anchor1->id << " - " << (*p_link)->anchor2->id << endl;
-//       for (list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
-//         cout << "       " << (*p_tag).species << ":" << (*p_tag).chr << ":" << (*p_tag).start << ":" << (*p_tag).end
-//             << " [" << (*p_tag).strand << "]" << endl;
-//       }
-      int weight = 1;
-      if ((*p_link)->anchor_list.front() == (*p_link)->anchor_list.back()) {
-        weight = 2;
-      }
-      int size = (*p_link)->tags.size();
-      if (size == 1) {
-        hist[0]+=weight;
-      } else if (size == 2) {
-        hist[1]+=weight;
-      } else if (size == 3) {
-        hist[2]+=weight;
-      } else if (size == 4) {
-        hist[3]+=weight;
-      } else {
-        hist[4]+=weight;
-      }
-    }
-  }
-  cout << "Histogram of num. of regions per anchor" << endl;
-  for (int a=0; a < 4; a++) {
-    cout << a + 1 << ": " << hist[a]/2 << endl;
-  }
-  cout << "+: " << hist[4]/2 << endl;
   return true;
 }
 
@@ -235,19 +202,43 @@ void Graph::minimize()
 
 
 /*!
-    \fn Graph::print()
+    \fn Graph::print_stats()
  */
-void Graph::print()
+void Graph::print_stats()
 {
   int count = 0;
+  int hist[5] = {0,0,0,0,0};
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor * this_anchor = it->second;
-//     this_anchor->print();
     if (this_anchor->links.size()) {
       count++;
     }
+    for (std::list<Link*>::iterator p_link = this_anchor->links.begin(); p_link != this_anchor->links.end(); p_link++) {
+      int weight = 1;
+      if ((*p_link)->anchor_list.front() == (*p_link)->anchor_list.back()) {
+        weight = 2;
+      }
+      int size = (*p_link)->tags.size();
+      if (size == 1) {
+        hist[0]+=weight;
+      } else if (size == 2) {
+        hist[1]+=weight;
+      } else if (size == 3) {
+        hist[2]+=weight;
+      } else if (size == 4) {
+        hist[3]+=weight;
+      } else {
+        hist[4]+=weight;
+      }
+    }
   }
   cout << "Graph has " << count << " non-void anchors (" << anchors.size() << " in total)" << endl;
+  cout << "Histogram of num. of regions per link" << endl;
+  for (int a=0; a < 4; a++) {
+    cout << a + 1 << ": " << hist[a]/2 << endl;
+  }
+  cout << "+: " << hist[4]/2 << endl;
+
 }
 
 

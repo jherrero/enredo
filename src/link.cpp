@@ -239,8 +239,8 @@ Link* Link::merge(Link* other_link)
   cout << "Merging:" <<endl;
   this->print();
   other_link->print();
-  string kk;
-  cin >> kk;
+//   string kk;
+//   cin >> kk;
 
   while (p_anchor_1 != this->anchor_list.end() and p_anchor_2 != other_link->anchor_list.end()) {
     if (*p_anchor_1 == *p_anchor_2) {

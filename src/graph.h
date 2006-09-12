@@ -18,7 +18,7 @@ public:
     Anchor* get_Anchor(std::string id);
     bool populate_from_file(char *filename);
     void minimize();
-    void print();
+    void print_stats();
     void print_links(int min_anchors, int min_regions, int min_length);
     void merge_alternative_paths(int max_anchors);
 
