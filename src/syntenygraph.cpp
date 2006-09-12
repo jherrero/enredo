@@ -21,7 +21,7 @@ int main(int argc, char *argv[])
   int min_length = 100000;
   int min_regions = 2;
   int min_anchors = 3;
-  bool help;
+  bool help = false;
   bool ret;
   string this_arg;
 
