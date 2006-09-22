@@ -202,43 +202,72 @@ void Graph::minimize()
 
 
 /*!
-    \fn Graph::print_stats()
+    \fn Graph::print_stats(int histogram_size)
  */
-void Graph::print_stats()
+void Graph::print_stats(int histogram_size)
 {
-  int count = 0;
-  int hist[5] = {0,0,0,0,0};
+  int non_void_anchors_counter = 0;
+  int links_counter = 0;
+  int hist[histogram_size];
+  std::map< std::string, list<int> > lengths;
+
+  for (int a = 0; a < histogram_size; a++) {
+    hist[a] = 0;
+  }
+
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor * this_anchor = it->second;
     if (this_anchor->links.size()) {
-      count++;
+      non_void_anchors_counter++;
     }
     for (std::list<Link*>::iterator p_link = this_anchor->links.begin(); p_link != this_anchor->links.end(); p_link++) {
-      int weight = 1;
-      if ((*p_link)->anchor_list.front() == (*p_link)->anchor_list.back()) {
-        weight = 2;
+      if ((*p_link)->anchor_list.front()->id != this_anchor->id) {
+        /* Each link will be counted twice, once when counting links for the
+        first anchor and once when counting links for the last anchor
+        (except when the fist and the last anchors are the same one). */
+        continue;
       }
+      links_counter++;
+      for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
+        list<int> *this_list = &(lengths[*(p_tag->species)]);
+        this_list->push_back(p_tag->end - p_tag->start + 1);
+      }
+
       int size = (*p_link)->tags.size();
-      if (size == 1) {
-        hist[0]+=weight;
-      } else if (size == 2) {
-        hist[1]+=weight;
-      } else if (size == 3) {
-        hist[2]+=weight;
-      } else if (size == 4) {
-        hist[3]+=weight;
+      if (size < histogram_size) {
+        hist[size - 1]++;
       } else {
-        hist[4]+=weight;
+        hist[histogram_size - 1]++;
       }
     }
   }
-  cout << "Graph has " << count << " non-void anchors (" << anchors.size() << " in total)" << endl;
-  cout << "Histogram of num. of regions per link" << endl;
-  for (int a=0; a < 4; a++) {
-    cout << a + 1 << ": " << hist[a]/2 << endl;
-  }
-  cout << "+: " << hist[4]/2 << endl;
+  cout << "Graph has " << non_void_anchors_counter << " non-void anchors ("
+      << anchors.size() << " in total) and " << links_counter << " links (edges)" << endl;
 
+  for (std::map<std::string, list<int> >::iterator it = lengths.begin(); it != lengths.end(); it++) {
+    cout << "N50 for " << it->first << ": ";
+    list<int> *this_list = &(it->second);
+    this_list->sort();
+    int sum = 0;
+    for (std::list<int>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
+      sum += *p_length;
+    }
+    int acc = 0;
+    for (std::list<int>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
+      acc += *p_length;
+      if (acc * 2 > sum) {
+        cout << *p_length;
+        break;
+      }
+    }
+    cout << " (total length = " << sum << ")" << endl;
+  }
+
+  cout << "Histogram of num. of regions per link" << endl;
+  for (int a=0; a < histogram_size - 1; a++) {
+    cout << a + 1 << ": " << hist[a] << endl;
+  }
+  cout << "+: " << hist[histogram_size - 1] << endl;
 }
 
 

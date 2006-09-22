@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
   int min_regions = 2;
   int min_anchors = 3;
   int path_dissimilarity = 0;
+  int histogram_size = 10;
   bool help = false;
   bool ret;
   string this_arg;
@@ -37,6 +38,9 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--min-anchors") and (a < argc - 1)) {
       a++;
       min_anchors = atoi(argv[a]);
+    } else if ((this_arg == "--histogram-size") and (a < argc - 1)) {
+      a++;
+      histogram_size = atoi(argv[a]);
     } else if ((this_arg == "--help") or (this_arg == "-h")) {
       help = true;
     } else if (!filename) {
@@ -56,12 +60,11 @@ int main(int argc, char *argv[])
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
   }
-//   my_graph.print();
 
   cout << endl
       << " Stats before minimizing the Graph:" << endl
       << "====================================" << endl;
-  my_graph.print_stats();
+  my_graph.print_stats(histogram_size);
 
   my_graph.minimize();
   for (int a = 1; a < path_dissimilarity; a++) {
@@ -72,7 +75,7 @@ int main(int argc, char *argv[])
   cout << endl
       << " Stats after minimizing the Graph:" << endl
       << "===================================" << endl;
-  my_graph.print_stats();
+  my_graph.print_stats(histogram_size);
 
   cout << endl
       << " Resulting blocks:" << endl
@@ -93,6 +96,7 @@ void print_help(void)
   cout << " --min-length: minimum length of final syntenic block (def: 100000)" << endl;
   cout << " --min-regions: minimum number of region in the syntenic block (def: 2)" << endl;
   cout << " --min-anchors: minimum number of anchors in the syntenic block (def: 3)" << endl;
+  cout << " --histogram-size: size for histogram of num. of regions pero link (def: 10)" << endl;
   cout << " --help: prints this help" << endl;
   cout << endl;
   cout << "See README file for more details." << endl;
