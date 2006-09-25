@@ -60,6 +60,7 @@ bool Graph::populate_from_file(char *filename, int max_gap_length)
   }
 
   int line_counter = 0;
+  int long_gap_counter = 0;
   Anchor *last_anchor = NULL;
   string last_species;
   string last_chr;
@@ -107,8 +108,11 @@ bool Graph::populate_from_file(char *filename, int max_gap_length)
     }
     if (last_species == this_species and
         last_chr == this_chr and
-        last_end < this_start and
-        ((max_gap_length == 0) or (this_start - last_end - 1 < max_gap_length))) {
+        last_end < this_start) {
+      if ((max_gap_length > 0) and (this_start - last_end - 1 > max_gap_length)) {
+        long_gap_counter++;
+        continue;
+      }
       Link *this_link = anchor->get_direct_Link(last_anchor);
       short this_link_strand;
       if (last_anchor == anchor) {
@@ -147,6 +151,7 @@ bool Graph::populate_from_file(char *filename, int max_gap_length)
 //     }
   }
   inputfile.close();
+  cout << "Number of long gaps (larger than " << max_gap_length << "): " << long_gap_counter << endl;
   return true;
 }
 
