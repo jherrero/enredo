@@ -1,0 +1,154 @@
+SyntenyGraph v0.1
+
+=======================================
+ SYNOPSIS
+=======================================
+
+Usage: syntenygraph [options] anchors_file.txt
+
+Options:
+ --max-gap-length: maximum allowed gap between two anchors
+
+ --min-length: minimum length of final syntenic block (def: 100000)
+ --min-regions: minimum number of region in the syntenic block (def: 2)
+ --min-anchors: minimum number of anchors in the syntenic block (def: 3)
+ --all: print all the syntenic block (overwrite previous values)
+
+ --histogram-size: size for histogram of num. of regions per link (def: 10)
+
+ --help: prints this help
+
+=======================================
+ DESCRIPTION
+=======================================
+
+This program reads an input file containing the results of mapping a set of
+anchors onto several genomes. Ideally, each anchor should be found several
+times. This program links the anchors according to their positions on the
+genomes and try to concatenate the links (edges) when possible. Let be G1 and
+G2 two (pieces of) genomes and A, B, C... some anchors.
+
+G1: A---B---C---D---E---F---G
+G2: A----B--C-----E-----F---G
+
+The initial graph will have a link from A to B which is found on G1 from 1
+to 4 and on G2 from 1 to 5. There will be another link from B to C which
+is found on G1 from 4 to 8 and on G2 from 5 to 8. Here is the full list of
+links for the previous example:
+
+A-B: G1(1-4); G2(1-5)
+B-C: G1(4-8); G2(5-8)
+C-D: G1(8-12)
+C-E: G2(8-14)
+D-E: G1(12-16)
+E-F: G1(16-20); G2(14-20)
+F-G: G1(20-24); G2(20-24)
+
+A-B and B-C can be concatenated because A-B is always followed by B-C:
+
+A-B-C: G1(1-8); G2(1-8)
+C-D: G1(8-12)
+C-E: G2(8-14)
+D-E: G1(12-16)
+E-F: G1(16-20); G2(14-20)
+F-G: G1(20-24); G2(20-24)
+
+The same happens with C-D and D-E:
+
+A-B-C: G1(1-8); G2(1-8)
+C-D-E: G1(8-16)
+C-E: G2(8-14)
+E-F: G1(16-20); G2(14-20)
+F-G: G1(20-24); G2(20-24)
+
+And E-F and F-G:
+
+A-B-C: G1(1-8); G2(1-8)
+C-D-E: G1(8-16)
+C-E: G2(8-14)
+E-F-G: G1(16-24); G2(14-24)
+
+Using this simple operation, we can use the resulting links to define syntenic
+regions.
+
+=======================================
+ OPTIONS
+=======================================
+
+* FOR BUILDING THE GRAPH *
+
+--max-gap-length:
+If the distance between two anchors is larger than this value, they wont be
+linked. A value of 0 disable this option.
+Default: 10000
+
+
+* FOR DEFINNING THE SYNTENIC REGIONS *
+
+After concatenating all the links, you can get the resulting syntenic blocks.
+
+--min-length:
+Only blocks which are longer than this limit will be printed out. The length
+of the block correspond to the shortest of the sequences in that block.
+Default: 100kb
+
+--min-regions:
+Only blocks containing at least this number of sequences will be dumped.
+Default: 2
+
+--min-anchors:
+Only blocks having at least this number of anchors will be dumped. At the
+beginning, the blocks have only two anchors and a new anchor is added in
+each concatenation. The more anchors, the better supported is the block.
+Default: 3
+
+--all: print all the syntenic block (overwrite previous values)
+Prints everything, even short blocks with one single region.
+
+
+* FOR THE RESULTING STATS *
+
+--histogram-size: size for histogram of num. of regions per link (def: 10)
+
+
+=======================================
+ INPUT FILE
+=======================================
+
+The input file contains the result of mapping a set of anchors onto several
+genomes. Anchors are expected to be sorted by organism, chromosome and
+position. Each line should correspond to an anchor and each line contains 6
+values separated by tabs. The six values are: the anchor name (a string),
+the species name (a string), the chromosome name (a string), the start
+position (an integer value), the end position (an integer value), the strand
+(either + or -) and the score (a real value). Here is an example:
+
+A1      Spcs1   X       53      85      +       123
+B1      Spcs1   X       458     498     +       11
+C1      Spcs1   X       3601    3639    +       434
+B1      Spcs1   X       5480    5520    +       1
+D1      Spcs1   X       6479    6510    +       41
+A       Spcs1   Y       1379    4410    +       1567
+E       Spcs1   Y       5879    5910    +       311
+E       Spcs1   Y       6479    6510    +       217
+D       Spcs1   Y       6567    6593    +       135
+D       Spcs1   Y       7567    7593    +       14
+D       Spcs1   Y       8567    8593    +       617
+A       Spcs1   Y       9863    9893    +       133
+C       Spcs1   Y       10187   10218   +       714
+A1      Spcs2   X       53      85      +       17
+B1      Spcs2   X       458     498     +       13
+C1      Spcs2   X       3601    3639    +       13
+B1      Spcs2   X       5480    5520    +       881
+D1      Spcs2   X       6479    6510    +       16
+A       Spcs2   Y       4379    4410    +       51
+E       Spcs2   Y       5879    5910    +       17
+E       Spcs2   Y       6479    6510    +       13
+D       Spcs2   Y       6567    6593    +       41
+D       Spcs2   Y       7567    7593    +       14
+D       Spcs2   Y       8567    8593    +       18
+A       Spcs2   Y       9863    9893    +       19
+C       Spcs2   Y       10187   10218   +       31
+
+At the moment, strands and scores are ignored but might be used in a future
+version.
