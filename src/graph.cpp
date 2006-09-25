@@ -50,7 +50,7 @@ Anchor* Graph::get_Anchor(string id)
 /*!
     \fn Graph::populate_from_file(string filename)
  */
-bool Graph::populate_from_file(char *filename)
+bool Graph::populate_from_file(char *filename, int max_gap_length)
 {
   ifstream inputfile (filename);
   string line;
@@ -107,7 +107,8 @@ bool Graph::populate_from_file(char *filename)
     }
     if (last_species == this_species and
         last_chr == this_chr and
-        last_end < this_start) {
+        last_end < this_start and
+        ((max_gap_length == 0) or (this_start - last_end - 1 < max_gap_length))) {
       Link *this_link = anchor->get_direct_Link(last_anchor);
       short this_link_strand;
       if (last_anchor == anchor) {

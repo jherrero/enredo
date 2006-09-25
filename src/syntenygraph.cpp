@@ -18,18 +18,23 @@ int main(int argc, char *argv[])
 {
   Graph my_graph;
   char *filename = NULL;
+  int max_gap_length = 10000;
   int min_length = 100000;
   int min_regions = 2;
   int min_anchors = 3;
   int path_dissimilarity = 0;
   int histogram_size = 10;
+  bool print_all = false;
   bool help = false;
   bool ret;
   string this_arg;
 
   for (int a = 1; a < argc; a++) {
     this_arg = argv[a];
-    if ((this_arg == "--min-length") and (a < argc - 1)) {
+    if ((this_arg == "--max-gap-length") and (a < argc - 1)) {
+      a++;
+      max_gap_length = atoi(argv[a]);
+    } else if ((this_arg == "--min-length") and (a < argc - 1)) {
       a++;
       min_length = atoi(argv[a]);
     } else if ((this_arg == "--min-regions") and (a < argc - 1)) {
@@ -38,6 +43,8 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--min-anchors") and (a < argc - 1)) {
       a++;
       min_anchors = atoi(argv[a]);
+    } else if (this_arg == "--all") {
+      print_all = true;
     } else if ((this_arg == "--histogram-size") and (a < argc - 1)) {
       a++;
       histogram_size = atoi(argv[a]);
@@ -53,9 +60,13 @@ int main(int argc, char *argv[])
   if (help or !filename) {
     print_help();
     exit(0);
+  } else if (print_all) {
+    min_length = 1;
+    min_regions = 1;
+    min_anchors = 1;
   }
 
-  ret = my_graph.populate_from_file(filename);
+  ret = my_graph.populate_from_file(filename, max_gap_length);
   if (!ret) {
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
@@ -93,10 +104,15 @@ void print_help(void)
   cout << "Usage: sytnenygraph [options] anchors_file.txt" << endl;
   cout << endl;
   cout << "Options:" << endl;
+  cout << " --max-gap-length: maximum allowed gap between two anchors" << endl;
+  cout << endl;
   cout << " --min-length: minimum length of final syntenic block (def: 100000)" << endl;
   cout << " --min-regions: minimum number of region in the syntenic block (def: 2)" << endl;
   cout << " --min-anchors: minimum number of anchors in the syntenic block (def: 3)" << endl;
+  cout << " --all: print all the syntenic block (overwrite previous values)" << endl;
+  cout << endl;
   cout << " --histogram-size: size for histogram of num. of regions pero link (def: 10)" << endl;
+  cout << endl;
   cout << " --help: prints this help" << endl;
   cout << endl;
   cout << "See README file for more details." << endl;
