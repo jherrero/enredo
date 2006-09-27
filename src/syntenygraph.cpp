@@ -66,11 +66,25 @@ int main(int argc, char *argv[])
     min_anchors = 1;
   }
 
+  cout << "SyntenyGraph v" << VERSION << endl;
+  cout << endl
+      << " Parameters:" << endl
+      << "====================================" << endl
+      << "Input-file: " << filename << endl
+      << "max-gap-length: " << max_gap_length << endl
+      << "min-length: " << min_length << endl
+      << "min-regions: " << min_regions << endl
+      << "min-anchors: " << min_anchors << endl;
+
+  cout << endl
+      << " Reading input file:" << endl
+      << "====================================" << endl;
   ret = my_graph.populate_from_file(filename, max_gap_length);
   if (!ret) {
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
   }
+
 
   cout << endl
       << " Stats before minimizing the Graph:" << endl
@@ -99,7 +113,7 @@ int main(int argc, char *argv[])
 
 void print_help(void)
 {
-  cout << "SyntenyGraph v0.1" << endl;
+  cout << "SyntenyGraph v" << VERSION << endl;
   cout << endl;
   cout << "Usage: sytnenygraph [options] anchors_file.txt" << endl;
   cout << endl;
