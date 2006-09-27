@@ -82,6 +82,10 @@ If the distance between two anchors is larger than this value, they wont be
 linked. A value of 0 disable this option.
 Default: 10000
 
+--min-score:
+Ignore anchors with a score lower than this value.
+Default: 0
+
 
 * FOR DEFINNING THE SYNTENIC REGIONS *
 
@@ -150,5 +154,5 @@ D       Spcs2   Y       8567    8593    +       18
 A       Spcs2   Y       9863    9893    +       19
 C       Spcs2   Y       10187   10218   +       31
 
-At the moment, strands and scores are ignored but might be used in a future
+At the moment, the strand is ignored but it might be used in a future
 version.

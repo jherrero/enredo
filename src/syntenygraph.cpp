@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
   Graph my_graph;
   char *filename = NULL;
   int max_gap_length = 10000;
+  float min_score = 0.0f;
   int min_length = 100000;
   int min_regions = 2;
   int min_anchors = 3;
@@ -34,6 +35,9 @@ int main(int argc, char *argv[])
     if ((this_arg == "--max-gap-length") and (a < argc - 1)) {
       a++;
       max_gap_length = atoi(argv[a]);
+    } else if ((this_arg == "--min-score") and (a < argc - 1)) {
+      a++;
+      min_score = atof(argv[a]);
     } else if ((this_arg == "--min-length") and (a < argc - 1)) {
       a++;
       min_length = atoi(argv[a]);
@@ -71,6 +75,7 @@ int main(int argc, char *argv[])
       << " Parameters:" << endl
       << "====================================" << endl
       << "Input-file: " << filename << endl
+      << "min-score: " << min_score << endl
       << "max-gap-length: " << max_gap_length << endl
       << "min-length: " << min_length << endl
       << "min-regions: " << min_regions << endl
@@ -79,7 +84,7 @@ int main(int argc, char *argv[])
   cout << endl
       << " Reading input file:" << endl
       << "====================================" << endl;
-  ret = my_graph.populate_from_file(filename, max_gap_length);
+  ret = my_graph.populate_from_file(filename, min_score, max_gap_length);
   if (!ret) {
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);

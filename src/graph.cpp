@@ -50,7 +50,7 @@ Anchor* Graph::get_Anchor(string id)
 /*!
     \fn Graph::populate_from_file(string filename)
  */
-bool Graph::populate_from_file(char *filename, int max_gap_length)
+bool Graph::populate_from_file(char *filename, float min_score, int max_gap_length)
 {
   ifstream inputfile (filename);
   string line;
@@ -100,6 +100,9 @@ bool Graph::populate_from_file(char *filename, int max_gap_length)
       cerr << "strand must be + or - in <" << line << ">" << endl;
       inputfile.close();
       return false;
+    }
+    if (this_score < min_score) {
+      continue;
     }
     Anchor *anchor = this->get_Anchor(this_anchor_id);
     if (!anchor) {
