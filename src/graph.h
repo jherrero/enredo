@@ -19,7 +19,7 @@ public:
     bool populate_from_file(char *filename, float min_score, int max_gap_length);
     void minimize();
     void print_stats(int histogram_size);
-    void print_links(int min_anchors, int min_regions, int min_length);
+    void print_links(uint min_anchors, uint min_regions, uint min_length);
     void merge_alternative_paths(int max_anchors);
 
 protected:

@@ -18,12 +18,12 @@ int main(int argc, char *argv[])
 {
   Graph my_graph;
   char *filename = NULL;
-  int max_gap_length = 10000;
+  uint max_gap_length = 10000;
   float min_score = 0.0f;
-  int min_length = 100000;
-  int min_regions = 2;
-  int min_anchors = 3;
-  int path_dissimilarity = 0;
+  uint min_length = 100000;
+  uint min_regions = 2;
+  uint min_anchors = 3;
+  uint path_dissimilarity = 0;
   int histogram_size = 10;
   bool print_all = false;
   bool help = false;
@@ -97,7 +97,7 @@ int main(int argc, char *argv[])
   my_graph.print_stats(histogram_size);
 
   my_graph.minimize();
-  for (int a = 1; a < path_dissimilarity; a++) {
+  for (uint a = 1; a < path_dissimilarity; a++) {
     my_graph.merge_alternative_paths(a);
     my_graph.minimize();
   }

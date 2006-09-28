@@ -59,8 +59,8 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
     return false;
   }
 
-  int line_counter = 0;
-  int long_gap_counter = 0;
+  uint64_t line_counter = 0;
+  uint long_gap_counter = 0;
   Anchor *last_anchor = NULL;
   string last_species;
   string last_chr;
@@ -72,7 +72,6 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
     if (line[0] == '#' or inputfile.eof()) {
       continue;
     }
-    bool error = false;
     string this_anchor_id;
     string this_species;
     string this_chr;
@@ -215,10 +214,15 @@ void Graph::minimize()
  */
 void Graph::print_stats(int histogram_size)
 {
-  int non_void_anchors_counter = 0;
-  int links_counter = 0;
-  int hist[histogram_size];
-  std::map< std::string, list<int> > lengths;
+  uint64_t non_void_anchors_counter = 0;
+  uint64_t links_counter = 0;
+  uint64_t *hist;
+  std::map< std::string, list<uint> > lengths;
+  hist = (uint64_t*)malloc(histogram_size * sizeof(uint64_t));
+  if (!hist) {
+    cerr << "Out of memory!" << endl;
+    exit(1);
+  }
 
   for (int a = 0; a < histogram_size; a++) {
     hist[a] = 0;
@@ -237,9 +241,11 @@ void Graph::print_stats(int histogram_size)
         continue;
       }
       links_counter++;
-      for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
-        list<int> *this_list = &(lengths[*(p_tag->species)]);
-        this_list->push_back(p_tag->end - p_tag->start + 1);
+      if ((*p_link)->tags.size() > 1) {
+        for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
+          list<uint> *this_list = &(lengths[*(p_tag->species)]);
+          this_list->push_back(p_tag->end - p_tag->start + 1);
+        }
       }
 
       int size = (*p_link)->tags.size();
@@ -253,16 +259,16 @@ void Graph::print_stats(int histogram_size)
   cout << "Graph has " << non_void_anchors_counter << " non-void anchors ("
       << anchors.size() << " in total) and " << links_counter << " links (edges)" << endl;
 
-  for (std::map<std::string, list<int> >::iterator it = lengths.begin(); it != lengths.end(); it++) {
+  for (std::map<std::string, list<uint> >::iterator it = lengths.begin(); it != lengths.end(); it++) {
     cout << "N50 for " << it->first << ": ";
-    list<int> *this_list = &(it->second);
+    list<uint> *this_list = &(it->second);
     this_list->sort();
-    int sum = 0;
-    for (std::list<int>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
+    uint64_t sum = 0;
+    for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
       sum += *p_length;
     }
-    int acc = 0;
-    for (std::list<int>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
+    uint64_t acc = 0;
+    for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
       acc += *p_length;
       if (acc * 2 > sum) {
         cout << *p_length;
@@ -277,13 +283,15 @@ void Graph::print_stats(int histogram_size)
     cout << a + 1 << ": " << hist[a] << endl;
   }
   cout << "+: " << hist[histogram_size - 1] << endl;
+  free(hist);
+  hist = NULL;
 }
 
 
 /*!
     \fn Graph::print_links(int min_anchors, int min_regions, int min_length)
  */
-void Graph::print_links(int min_anchors, int min_regions, int min_length)
+void Graph::print_links(uint min_anchors, uint min_regions, uint min_length)
 {
   int num_blocks = 0;
   set<Link*> all_links;

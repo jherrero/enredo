@@ -55,7 +55,7 @@ Link* Link::concatenate(Link* other_link)
   // Concatenate tags
   bool * other_tag_has_been_concatenated;
   other_tag_has_been_concatenated = new bool [other_link->tags.size()];
-  for (int a = 0; a < other_link->tags.size(); a++) {
+  for (uint a = 0; a < other_link->tags.size(); a++) {
     other_tag_has_been_concatenated[a] = false;
   }
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
@@ -88,7 +88,7 @@ Link* Link::concatenate(Link* other_link)
       exit(2);
     }
   }
-  for (int a = 0; a < other_link->tags.size(); a++) {
+  for (uint a = 0; a < other_link->tags.size(); a++) {
     if (!other_tag_has_been_concatenated[a]) {
       cerr << "Error while concatenating links! (3)" << endl;
       exit(2);
@@ -145,10 +145,9 @@ Link* Link::concatenate(Link* other_link)
  */
 bool Link::can_be_concatenated_with(Link *other_link)
 {
-  bool ret = true;
-  bool * other_tag_can_be_concatenated;
+  bool *other_tag_can_be_concatenated;
   other_tag_can_be_concatenated = new bool [this->tags.size()];
-  for (int b = 0; b < other_link->tags.size(); b++) {
+  for (uint b = 0; b < other_link->tags.size(); b++) {
     other_tag_can_be_concatenated[b] = false;
   }
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
@@ -166,7 +165,7 @@ bool Link::can_be_concatenated_with(Link *other_link)
       return false;
     }
   }
-  for (int a = 0; a < other_link->tags.size(); a++) {
+  for (uint a = 0; a < other_link->tags.size(); a++) {
     if (!other_tag_can_be_concatenated[a]) {
       return false;
     }
@@ -211,12 +210,12 @@ void Link::print()
 /*!
     \fn Link::get_shortest_length()
  */
-int Link::get_shortest_length()
+uint Link::get_shortest_length()
 {
   list<tag>::iterator p_tag = this->tags.begin();
-  int shortest_length = p_tag->end - p_tag->start + 1;
+  uint shortest_length = p_tag->end - p_tag->start + 1;
   for (p_tag++; p_tag != this->tags.end(); p_tag++) {
-    int length = p_tag->end - p_tag->start + 1;
+    uint length = p_tag->end - p_tag->start + 1;
     if (length < shortest_length) {
       shortest_length = length;
     }
