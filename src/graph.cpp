@@ -59,7 +59,7 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
     return false;
   }
 
-  uint64_t line_counter = 0;
+  unsigned long long int line_counter = 0;
   uint long_gap_counter = 0;
   Anchor *last_anchor = NULL;
   string last_species;
@@ -214,11 +214,11 @@ void Graph::minimize()
  */
 void Graph::print_stats(int histogram_size)
 {
-  uint64_t non_void_anchors_counter = 0;
-  uint64_t links_counter = 0;
-  uint64_t *hist;
+  unsigned long long int non_void_anchors_counter = 0;
+  unsigned long long int links_counter = 0;
+  unsigned long long int *hist;
   std::map< std::string, list<uint> > lengths;
-  hist = (uint64_t*)malloc(histogram_size * sizeof(uint64_t));
+  hist = (unsigned long long int*)malloc(histogram_size * sizeof(unsigned long long int));
   if (!hist) {
     cerr << "Out of memory!" << endl;
     exit(1);
@@ -263,11 +263,11 @@ void Graph::print_stats(int histogram_size)
     cout << "N50 for " << it->first << ": ";
     list<uint> *this_list = &(it->second);
     this_list->sort();
-    uint64_t sum = 0;
+    unsigned long long int sum = 0;
     for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
       sum += *p_length;
     }
-    uint64_t acc = 0;
+    unsigned long long int acc = 0;
     for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
       acc += *p_length;
       if (acc * 2 > sum) {
@@ -316,7 +316,7 @@ void Graph::print_links(uint min_anchors, uint min_regions, uint min_length)
 /*!
     \fn Graph::merge_alternative_paths(int max_anchors)
  */
-void Graph::merge_alternative_paths(int max_anchors)
+void Graph::merge_alternative_paths(uint max_anchors)
 {
   int count = 0;
   cout << "Merging alternative paths..." << endl;

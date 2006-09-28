@@ -15,8 +15,8 @@ typedef class Anchor Anchor;
 struct tag {
   string *species;
   string *chr;
-  uint32_t start;
-  uint32_t end;
+  uint start;
+  uint end;
   short strand; // 1 when tag start => end corresponds to anchor_list.front() => anchor_list.back()
                 // and -1 when start => end corresponds to anchor_list.back() => anchor_list.front()
 };
@@ -34,7 +34,7 @@ public:
     void print();
     uint get_shortest_length();
     bool is_an_alternative_path_of(Link* other_link);
-    int get_num_of_mismatches(Link* other_link);
+    uint get_num_of_mismatches(Link* other_link);
 
     list<Anchor*> anchor_list;
 

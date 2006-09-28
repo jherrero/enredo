@@ -20,7 +20,7 @@ public:
     void minimize();
     void print_stats(int histogram_size);
     void print_links(uint min_anchors, uint min_regions, uint min_length);
-    void merge_alternative_paths(int max_anchors);
+    void merge_alternative_paths(uint max_anchors);
 
 protected:
     std::map<std::string, Anchor*> anchors;

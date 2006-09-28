@@ -326,7 +326,7 @@ bool Link::is_an_alternative_path_of(Link* other_link)
 /*!
     \fn Link::get_num_of_mismatches(Link* other_link)
  */
-int Link::get_num_of_mismatches(Link* other_link)
+uint Link::get_num_of_mismatches(Link* other_link)
 {
   int distance = 0;
   if (this->anchor_list.front() == other_link->anchor_list.back() and

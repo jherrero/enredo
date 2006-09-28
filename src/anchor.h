@@ -22,7 +22,7 @@ public:
     void print();
 
     string id;
-    int num;
+    uint num;
     std::list<Link*> links;
 
   protected:
