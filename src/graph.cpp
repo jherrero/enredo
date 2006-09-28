@@ -114,32 +114,32 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
         last_end < this_start) {
       if ((max_gap_length > 0) and (this_start - last_end - 1 > max_gap_length)) {
         long_gap_counter++;
-        continue;
-      }
-      Link *this_link = anchor->get_direct_Link(last_anchor);
-      short this_link_strand;
-      if (last_anchor == anchor) {
-        this_link_strand = 0;
-      } else if (last_anchor == *this_link->anchor_list.begin()) {
-        this_link_strand = 1;
-      } else if (anchor == *this_link->anchor_list.begin()) {
-        this_link_strand = -1;
       } else {
-        cerr << "Error";
-        exit(1);
+        Link *this_link = anchor->get_direct_Link(last_anchor);
+        short this_link_strand;
+        if (last_anchor == anchor) {
+          this_link_strand = 0;
+        } else if (last_anchor == *this_link->anchor_list.begin()) {
+          this_link_strand = 1;
+        } else if (anchor == *this_link->anchor_list.begin()) {
+          this_link_strand = -1;
+        } else {
+          cerr << "Error";
+          exit(1);
+        }
+        string *this_species = species[last_species];
+        if (!this_species) {
+          cout << "New species " << last_species << endl;
+          this_species = new string(last_species);
+          species[last_species] = this_species;
+        }
+        string *this_chr = chrs[last_chr];
+        if (!this_chr) {
+          this_chr = new string(last_chr);
+          chrs[last_chr] = this_chr;
+        }
+        this_link->add_tag(this_species, this_chr, last_start, this_end, this_link_strand);
       }
-      string *this_species = species[last_species];
-      if (!this_species) {
-        cout << "New species " << last_species << endl;
-        this_species = new string(last_species);
-        species[last_species] = this_species;
-      }
-      string *this_chr = chrs[last_chr];
-      if (!this_chr) {
-        this_chr = new string(last_chr);
-        chrs[last_chr] = this_chr;
-      }
-      this_link->add_tag(this_species, this_chr, last_start, this_end, this_link_strand);
     }
     last_anchor = anchor;
     last_species = this_species;
