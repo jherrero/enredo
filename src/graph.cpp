@@ -5,6 +5,7 @@
 #include <sstream>
 #include <cstdlib>
 #include <set>
+#include <vector>
 
 using namespace std;
 
@@ -210,23 +211,36 @@ void Graph::minimize()
 
 
 /*!
+    \fn Graph::print_anchors_histogram()
+ */
+void Graph::print_anchors_histogram()
+{
+  std::vector<unsigned long long int> hist;
+
+  for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
+    Anchor *this_anchor = it->second;
+    uint num = this_anchor->num;
+    if (num > hist.size()) {
+      hist.resize(num, 0);
+    }
+    hist[num - 1]++;
+  }
+  cout << "Histogram of num. of hits per Anchor" << endl;
+  for (uint a = 0; a < hist.size(); a++) {
+    cout << a + 1 << ": " << hist[a] << endl;
+  }
+}
+
+
+/*!
     \fn Graph::print_stats(int histogram_size)
  */
 void Graph::print_stats(int histogram_size)
 {
   unsigned long long int non_void_anchors_counter = 0;
   unsigned long long int links_counter = 0;
-  unsigned long long int *hist;
+  std::vector<unsigned long long int> hist(histogram_size, 0);
   std::map< std::string, list<uint> > lengths;
-  hist = (unsigned long long int*)malloc(histogram_size * sizeof(unsigned long long int));
-  if (!hist) {
-    cerr << "Out of memory!" << endl;
-    exit(1);
-  }
-
-  for (int a = 0; a < histogram_size; a++) {
-    hist[a] = 0;
-  }
 
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor * this_anchor = it->second;
@@ -283,8 +297,6 @@ void Graph::print_stats(int histogram_size)
     cout << a + 1 << ": " << hist[a] << endl;
   }
   cout << "+: " << hist[histogram_size - 1] << endl;
-  free(hist);
-  hist = NULL;
 }
 
 

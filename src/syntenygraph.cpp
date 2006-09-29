@@ -89,6 +89,7 @@ int main(int argc, char *argv[])
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
   }
+  my_graph.print_anchors_histogram();
 
 
   cout << endl
