@@ -35,6 +35,9 @@ int main(int argc, char *argv[])
     if ((this_arg == "--max-gap-length") and (a < argc - 1)) {
       a++;
       max_gap_length = atoi(argv[a]);
+    } else if ((this_arg == "--max-path-dissimilarity") and (a < argc - 1)) {
+      a++;
+      path_dissimilarity = atoi(argv[a]);
     } else if ((this_arg == "--min-score") and (a < argc - 1)) {
       a++;
       min_score = atof(argv[a]);
@@ -98,8 +101,8 @@ int main(int argc, char *argv[])
   my_graph.print_stats(histogram_size);
 
   my_graph.minimize();
-  for (uint a = 1; a < path_dissimilarity; a++) {
-    my_graph.merge_alternative_paths(a);
+  for (uint a = 0; a < path_dissimilarity; a++) {
+    my_graph.merge_alternative_paths(a + 1);
     my_graph.minimize();
   }
 
@@ -125,6 +128,7 @@ void print_help(void)
   cout << endl;
   cout << "Options:" << endl;
   cout << " --max-gap-length: maximum allowed gap between two anchors" << endl;
+  cout << " --min-score: minimum score required to accept a hit" << endl;
   cout << endl;
   cout << " --min-length: minimum length of final syntenic block (def: 100000)" << endl;
   cout << " --min-regions: minimum number of region in the syntenic block (def: 2)" << endl;
