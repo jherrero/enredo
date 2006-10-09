@@ -8,6 +8,7 @@ Usage: syntenygraph [options] anchors_file.txt
 
 Options:
  --max-gap-length: maximum allowed gap between two anchors
+ --min-score: minimum score required to accept a hit
 
  --min-length: minimum length of final syntenic block (def: 100000)
  --min-regions: minimum number of region in the syntenic block (def: 2)
@@ -156,3 +157,27 @@ C       Spcs2   Y       10187   10218   +       31
 
 At the moment, the strand is ignored but it might be used in a future
 version.
+
+=======================================
+ MERGE OVERLAP
+=======================================
+
+* Synopsis *
+
+Usage: mergeoverlap [options] anchors_file.txt
+
+Options:
+ --min-score: minimum score required to accept a hit
+
+ --output: sets the output filename. Output is sent to the standard output
+      by default.
+
+ --help: prints this help
+
+* Description *
+
+This programs read the same input file, look for overalapping anchors and
+merge them. Here again, the anchors must be sorted according to the same
+rules. The output file is similar to the input one except that overlapping
+anchors will share the same anchor id.
+

@@ -68,7 +68,7 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
-bin_PROGRAMS = syntenygraph
+bin_PROGRAMS = syntenygraph mergeoverlap
 syntenygraph_SOURCES = syntenygraph.cpp anchor.cpp graph.cpp link.cpp
 
 # set the include path found by configure
@@ -77,6 +77,7 @@ INCLUDES = $(all_includes)
 # the library search path.
 syntenygraph_LDFLAGS = $(all_libraries) 
 noinst_HEADERS = anchor.h graph.h link.h
+mergeoverlap_SOURCES = merge_overlap.cpp
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
 CONFIG_HEADER = ../config.h
 CONFIG_CLEAN_FILES = 
@@ -90,6 +91,10 @@ LIBS = @LIBS@
 syntenygraph_OBJECTS =  syntenygraph.o anchor.o graph.o link.o
 syntenygraph_LDADD = $(LDADD)
 syntenygraph_DEPENDENCIES = 
+mergeoverlap_OBJECTS =  merge_overlap.o
+mergeoverlap_LDADD = $(LDADD)
+mergeoverlap_DEPENDENCIES = 
+mergeoverlap_LDFLAGS = 
 CXXFLAGS = @CXXFLAGS@
 CXXCOMPILE = $(CXX) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
@@ -103,8 +108,8 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-SOURCES = $(syntenygraph_SOURCES)
-OBJECTS = $(syntenygraph_OBJECTS)
+SOURCES = $(syntenygraph_SOURCES) $(mergeoverlap_SOURCES)
+OBJECTS = $(syntenygraph_OBJECTS) $(mergeoverlap_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
@@ -164,6 +169,10 @@ maintainer-clean-compile:
 syntenygraph: $(syntenygraph_OBJECTS) $(syntenygraph_DEPENDENCIES)
 	@rm -f syntenygraph
 	$(CXXLINK) $(syntenygraph_LDFLAGS) $(syntenygraph_OBJECTS) $(syntenygraph_LDADD) $(LIBS)
+
+mergeoverlap: $(mergeoverlap_OBJECTS) $(mergeoverlap_DEPENDENCIES)
+	@rm -f mergeoverlap
+	$(CXXLINK) $(mergeoverlap_LDFLAGS) $(mergeoverlap_OBJECTS) $(mergeoverlap_LDADD) $(LIBS)
 .cpp.o:
 	$(CXXCOMPILE) -c $<
 
@@ -211,7 +220,6 @@ distdir: $(DISTFILES)
 	    || cp -p $$d/$$file $(distdir)/$$file || :; \
 	  fi; \
 	done
-
 info-am:
 info: info-am
 dvi-am:
