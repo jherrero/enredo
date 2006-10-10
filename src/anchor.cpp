@@ -58,12 +58,12 @@ void Anchor::add_Link(Link *link)
 
 
 /*!
-    \fn Anchor::print()
+    \fn Anchor::print(ostream &out)
  */
-void Anchor::print()
+void Anchor::print(ostream &out)
 {
   cout << "Anchor " << this->id << endl;
   for (std::list<Link*>::iterator p_link_it = this->links.begin(); p_link_it != this->links.end(); p_link_it++) {
-    (*p_link_it)->print();
+    (*p_link_it)->print(out);
   }
 }
