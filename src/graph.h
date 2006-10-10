@@ -23,7 +23,7 @@ public:
     void minimize();
     void print_anchors_histogram(std::ostream &out = std::cout);
     void print_stats(int histogram_size);
-    unsigned long int print_links(std::ostream &out, uint min_anchors, uint min_regions, uint min_length);
+    unsigned long int print_links(std::ostream &out = std::cout, uint min_anchors = 1, uint min_regions = 1, uint min_length = 0);
     void merge_alternative_paths(uint max_anchors);
 
 protected:

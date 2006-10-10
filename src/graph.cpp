@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <set>
 #include <vector>
+#include <fstream>
 
 using namespace std;
 
@@ -215,20 +216,50 @@ void Graph::minimize()
  */
 void Graph::print_anchors_histogram(std::ostream &out)
 {
-  std::vector<unsigned long long int> hist;
+  std::vector<unsigned long long int> hist_hits;
+  std::vector<unsigned long long int> hist_species(species.size(), 0);
 
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor *this_anchor = it->second;
     uint num = this_anchor->num;
-    if (num > hist.size()) {
-      hist.resize(num, 0);
+    if (num > hist_hits.size()) {
+      hist_hits.resize(num, 0);
     }
-    hist[num - 1]++;
+    hist_hits[num - 1]++;
+    std::set<string> these_species;
+    for (std::list<Link*>::iterator p_link = this_anchor->links.begin(); p_link != this_anchor->links.end(); p_link++) {
+      if ((*p_link)->tags.size() > 1) {
+        for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
+          these_species.insert(*p_tag->species);
+        }
+      }
+    }
+    if (these_species.size() > 0 ) {
+      hist_species[these_species.size() - 1]++;
+    }
   }
-  out << "Histogram of num. of hits per Anchor" << endl;
-  for (uint a = 0; a < hist.size(); a++) {
-    out << a + 1 << ": " << hist[a] << endl;
+  out << "Histogram of num. of species per Anchor (in how many species each Anchor is found)" << endl;
+  uint sum = 0;
+  ios::fmtflags current_flags = out.flags();
+  out.setf(ios::fixed);
+  out.precision(1);
+  for (uint a = 0; a < hist_species.size(); a++) {
+    sum += hist_species[a];
   }
+  for (uint a = 0; a < hist_species.size(); a++) {
+    out << a + 1 << ": " << hist_species[a] << " (" << (100.0f * hist_species[a]) / sum << "%)" << endl;
+  }
+  out << "Histogram of num. of hits per Anchor (how many times each Anchor is found)" << endl;
+  sum = 0;
+  for (uint a = 0; a < hist_hits.size(); a++) {
+    sum += hist_hits[a];
+  }
+  for (uint a = 0; a < hist_hits.size(); a++) {
+    if (hist_hits[a]) {
+      out << a + 1 << ": " << hist_hits[a] << " (" << (100.0f * hist_hits[a]) / sum << "%)" << endl;
+    }
+  }
+  out.flags(current_flags);
 }
 
 
