@@ -266,7 +266,9 @@ bool print_file(char *input_filename, char *output_filename, float min_score) {
     line_counter++;
   }
   inputfile.close();
-  outputfile.close();
+  if (output_filename) {
+    outputfile.close();
+  }
   return true;
 }
 
