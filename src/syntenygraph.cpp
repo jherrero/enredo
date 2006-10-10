@@ -17,7 +17,8 @@ void print_help(void);
 int main(int argc, char *argv[])
 {
   Graph my_graph;
-  char *filename = NULL;
+  char *input_filename = NULL;
+  char *output_filename = NULL;
   uint max_gap_length = 10000;
   float min_score = 0.0f;
   uint min_length = 100000;
@@ -35,12 +36,12 @@ int main(int argc, char *argv[])
     if ((this_arg == "--max-gap-length") and (a < argc - 1)) {
       a++;
       max_gap_length = atoi(argv[a]);
-    } else if ((this_arg == "--max-path-dissimilarity") and (a < argc - 1)) {
-      a++;
-      path_dissimilarity = atoi(argv[a]);
     } else if ((this_arg == "--min-score") and (a < argc - 1)) {
       a++;
       min_score = atof(argv[a]);
+    } else if ((this_arg == "--max-path-dissimilarity") and (a < argc - 1)) {
+      a++;
+      path_dissimilarity = atoi(argv[a]);
     } else if ((this_arg == "--min-length") and (a < argc - 1)) {
       a++;
       min_length = atoi(argv[a]);
@@ -55,16 +56,20 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--histogram-size") and (a < argc - 1)) {
       a++;
       histogram_size = atoi(argv[a]);
+    } else if (((this_arg == "--output-file") or (this_arg == "--output") or (this_arg == "-o"))and (a < argc - 1)) {
+      a++;
+      output_filename  = argv[a];
     } else if ((this_arg == "--help") or (this_arg == "-h")) {
       help = true;
-    } else if (!filename) {
-      filename = argv[a];
+    } else if (!input_filename) {
+      input_filename = argv[a];
     } else {
       cerr << "Unknown option: " << this_arg << endl;
+      exit(1);
     }
   }
 
-  if (help or !filename) {
+  if (help or !input_filename) {
     print_help();
     exit(0);
   } else if (print_all) {
@@ -77,7 +82,7 @@ int main(int argc, char *argv[])
   cout << endl
       << " Parameters:" << endl
       << "====================================" << endl
-      << "Input-file: " << filename << endl
+      << "Input-file: " << input_filename << endl
       << "min-score: " << min_score << endl
       << "max-gap-length: " << max_gap_length << endl
       << "min-length: " << min_length << endl
@@ -87,7 +92,7 @@ int main(int argc, char *argv[])
   cout << endl
       << " Reading input file:" << endl
       << "====================================" << endl;
-  ret = my_graph.populate_from_file(filename, min_score, max_gap_length);
+  ret = my_graph.populate_from_file(input_filename, min_score, max_gap_length);
   if (!ret) {
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
@@ -114,7 +119,20 @@ int main(int argc, char *argv[])
   cout << endl
       << " Resulting blocks:" << endl
       << "===================================" << endl;
-  my_graph.print_links(min_anchors, min_regions, min_length);
+  unsigned long int num_of_blocks;
+  if (output_filename) {
+    ofstream output_stream(output_filename);
+    if (!output_stream.is_open()) {
+      cerr << "EXIT (Cannot open file <" << output_filename << "> for output)" << endl;
+      exit(1);
+    }
+    cout << "Results in file <" << output_filename << ">" << endl;
+    num_of_blocks = my_graph.print_links(output_stream, min_anchors, min_regions, min_length);
+    output_stream.close();
+  } else {
+    num_of_blocks = my_graph.print_links(cout, min_anchors, min_regions, min_length);
+  }
+  cout << " Got " << num_of_blocks << " blocks." << endl;
 
   return EXIT_SUCCESS;
 }
