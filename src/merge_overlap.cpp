@@ -185,9 +185,25 @@ bool print_file(char *input_filename, char *output_filename, float min_score) {
   }
 
   unsigned long long int line_counter = 0;
+  string last_anchor_id = "";
+  string last_species = "";
+  string last_chr = "";
+  int last_start = 0;
+  int last_end = 0;
+  string last_strand = "+";
+  float last_score = 0.0f;
   while (!inputfile.eof()) {
     getline(inputfile, line);
     if (inputfile.eof()) {
+      if (anchors[last_anchor_id]) {
+        *out << *anchors[last_anchor_id] << "\t" << last_species << "\t"
+            << last_chr << "\t" << last_start << "\t" << last_end << "\t"
+            << last_strand << "\t" << last_score << endl;
+      } else if (last_anchor_id != "") {
+        *out << last_anchor_id << "\t" << last_species << "\t"
+            << last_chr << "\t" << last_start << "\t" << last_end << "\t"
+            << last_strand << "\t" << last_score << endl;
+      }
       break;
     }
     if (line[0] == '#') {
@@ -216,13 +232,37 @@ bool print_file(char *input_filename, char *output_filename, float min_score) {
       *out << "#LOW_SCORE:" << line << endl;
       continue;
     }
-    if (anchors[this_anchor_id]) {
-      *out << *anchors[this_anchor_id];
+    if (
+        last_species == this_species and
+        last_chr == this_chr and
+        this_start <= last_end) {
+      if (this_end > last_end) {
+        last_end = this_end;
+      }
+      if (this_score > last_score) {
+        last_score = this_score;
+      }
     } else {
-      *out << this_anchor_id;
+      if (anchors[last_anchor_id]) {
+        *out << *anchors[last_anchor_id] << "\t" << last_species << "\t"
+            << last_chr << "\t" << last_start << "\t" << last_end << "\t"
+            << last_strand << "\t" << last_score << endl;
+      } else if (last_anchor_id != "") {
+        *out << last_anchor_id << "\t" << last_species << "\t"
+            << last_chr << "\t" << last_start << "\t" << last_end << "\t"
+            << last_strand << "\t" << last_score << endl;
+      }
+
+      // Set last_* variables to current ones before next loop
+      last_anchor_id = this_anchor_id;
+      last_species = this_species;
+      last_chr = this_chr;
+      last_start = this_start;
+      last_end = this_end;
+      last_strand = this_strand;
+      last_score = this_score;
     }
-    *out << "\t" << this_species << "\t" << this_chr << "\t" << this_start
-        << "\t" << this_end << "\t" << this_strand << "\t" << this_score << endl;
+
     line_counter++;
   }
   inputfile.close();
