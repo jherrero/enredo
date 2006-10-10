@@ -35,7 +35,7 @@ Link* Anchor::get_direct_Link(Anchor *other_anchor)
   }
 
   // other_anchor was not found => create a new Link
-  Link* new_link = new Link(this, other_anchor);
+  Link* new_link = new Link(other_anchor, this);
   if (new_link) {
     this->add_Link(new_link);
     if (other_anchor != this) {
