@@ -211,9 +211,9 @@ void Graph::minimize()
 
 
 /*!
-    \fn Graph::print_anchors_histogram()
+    \fn Graph::print_anchors_histogram(std::ostream &out)
  */
-void Graph::print_anchors_histogram()
+void Graph::print_anchors_histogram(std::ostream &out)
 {
   std::vector<unsigned long long int> hist;
 
@@ -225,9 +225,9 @@ void Graph::print_anchors_histogram()
     }
     hist[num - 1]++;
   }
-  cout << "Histogram of num. of hits per Anchor" << endl;
+  out << "Histogram of num. of hits per Anchor" << endl;
   for (uint a = 0; a < hist.size(); a++) {
-    cout << a + 1 << ": " << hist[a] << endl;
+    out << a + 1 << ": " << hist[a] << endl;
   }
 }
 
@@ -301,9 +301,9 @@ void Graph::print_stats(int histogram_size)
 
 
 /*!
-    \fn Graph::print_links(int min_anchors, int min_regions, int min_length)
+    \fn Graph::print_links(ostream &out, int min_anchors, int min_regions, int min_length)
  */
-void Graph::print_links(uint min_anchors, uint min_regions, uint min_length)
+unsigned long int Graph::print_links(ostream &out, uint min_anchors, uint min_regions, uint min_length)
 {
   int num_blocks = 0;
   set<Link*> all_links;
@@ -319,9 +319,9 @@ void Graph::print_links(uint min_anchors, uint min_regions, uint min_length)
     }
   }
   for (std::set<Link*>::iterator p_link_it = all_links.begin(); p_link_it != all_links.end(); p_link_it++) {
-    (*p_link_it)->print();
+    (*p_link_it)->print(out);
   }
-  cout << " Got " << all_links.size() << " blocks." << endl;
+  return num_blocks;
 }
 
 
@@ -339,14 +339,14 @@ void Graph::merge_alternative_paths(uint max_anchors)
       merge_event = false;
       for (std::list<Link*>::iterator p_link1 = this_anchor->links.begin(); p_link1 != this_anchor->links.end() and !merge_event; p_link1++) {
         for (std::list<Link*>::iterator p_link2 = this_anchor->links.begin(); p_link2 != p_link1 and !merge_event; p_link2++) {
+//           (*p_link1)->print();
+//           (*p_link2)->print();
           if ((*p_link1)->is_an_alternative_path_of(*p_link2)) {
             if ((*p_link1)->get_num_of_mismatches(*p_link2) <= max_anchors) {
               count++;
-            (*p_link1)->merge(*p_link2);
-            merge_event = true;
+              (*p_link1)->merge(*p_link2);
+              merge_event = true;
             }
-//           } else {
-//             cout << " NO" << endl;
           }
         }
       }

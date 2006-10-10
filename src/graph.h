@@ -4,8 +4,11 @@
 /**
 	@author Javier Herrero <jherrero@ebi.ac.uk>
 */
+#include <iostream>
+#include <sstream>
 #include <cstdlib>
 #include <map>
+#include <fstream>
 
 typedef class Anchor Anchor;
 
@@ -18,9 +21,9 @@ public:
     Anchor* get_Anchor(std::string id);
     bool populate_from_file(char *filename, float min_score, int max_gap_length);
     void minimize();
-    void print_anchors_histogram(void);
+    void print_anchors_histogram(std::ostream &out = std::cout);
     void print_stats(int histogram_size);
-    void print_links(uint min_anchors, uint min_regions, uint min_length);
+    unsigned long int print_links(std::ostream &out, uint min_anchors, uint min_regions, uint min_length);
     void merge_alternative_paths(uint max_anchors);
 
 protected:

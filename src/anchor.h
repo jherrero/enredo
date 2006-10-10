@@ -19,7 +19,7 @@ public:
     ~Anchor();
     Link* get_direct_Link(Anchor *other_anchor);
     void add_Link(Link *link);
-    void print();
+    void print(ostream &out = cout);
 
     string id;
     uint num;

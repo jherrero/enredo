@@ -1,6 +1,7 @@
 #include <iostream>
 #include "link.h"
 #include "anchor.h"
+#include <vector>
 
 Link::Link(Anchor* anchor1, Anchor* anchor2)
 {
@@ -145,11 +146,7 @@ Link* Link::concatenate(Link* other_link)
  */
 bool Link::can_be_concatenated_with(Link *other_link)
 {
-  bool *other_tag_can_be_concatenated;
-  other_tag_can_be_concatenated = new bool [this->tags.size()];
-  for (uint b = 0; b < other_link->tags.size(); b++) {
-    other_tag_can_be_concatenated[b] = false;
-  }
+  std::vector<bool> other_tag_can_be_concatenated(this->tags.size(), false);
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
     bool this_tag_can_be_concatenated = false;
     int other_count = 0;
@@ -188,21 +185,21 @@ void Link::reverse()
 
 
 /*!
-    \fn Link::print()
+    \fn Link::print(ostream &out)
  */
-void Link::print()
+void Link::print(ostream &out)
 {
 //   if (this->tags.size() == 1 or this->anchor_list.size() < 3) {
 //     return;
 //   }
   for (std::list<Anchor*>::iterator p_anchor_it = this->anchor_list.begin(); p_anchor_it != this->anchor_list.end(); p_anchor_it++) {
-    cout << " - " << (*p_anchor_it)->id;
+    out << " - " << (*p_anchor_it)->id;
   }
-  cout << "  (has " << this->tags.size() << " tags)" << endl;
+  out << "  (has " << this->tags.size() << " tags)" << endl;
   for (list<tag>::iterator p_tag = this->tags.begin(); p_tag != this->tags.end(); p_tag++) {
-    cout << "       " << *p_tag->species << ":" << *p_tag->chr << ":"
+    out << "       " << *p_tag->species << ":" << *p_tag->chr << ":"
         << p_tag->start << ":" << p_tag->end
-        << " [" << p_tag->strand << "]" << endl;
+        << " [" << p_tag->strand << "] l=" << (p_tag->end - p_tag->start + 1) << endl;
   }
 }
 
@@ -235,9 +232,9 @@ Link* Link::merge(Link* other_link)
   }
   list<Anchor*>::iterator p_anchor_1 = this->anchor_list.begin();
   list<Anchor*>::iterator p_anchor_2 = other_link->anchor_list.begin();
-  cout << "Merging:" <<endl;
-  this->print();
-  other_link->print();
+//   cout << "Merging:" <<endl;
+//   this->print();
+//   other_link->print();
 //   string kk;
 //   cin >> kk;
 

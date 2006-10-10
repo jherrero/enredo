@@ -31,7 +31,7 @@ public:
     Link* merge(Link* other_link);
     bool can_be_concatenated_with(Link *other_link);
     void reverse();
-    void print();
+    void print(ostream &out = cout);
     uint get_shortest_length();
     bool is_an_alternative_path_of(Link* other_link);
     uint get_num_of_mismatches(Link* other_link);
