@@ -93,7 +93,7 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
       return false;
     }
     if (this_start > this_end) {
-      cerr << "start cannot be larger than end in <" << line << ">" << endl;
+      cerr << "start cannot be longer than end in <" << line << ">" << endl;
       inputfile.close();
       return false;
     }
@@ -271,8 +271,14 @@ void Graph::print_stats(int histogram_size)
   unsigned long long int non_void_anchors_counter = 0;
   unsigned long long int links_counter = 0;
   std::vector<unsigned long long int> hist(histogram_size, 0);
+  std::map< std::string, std::vector<unsigned long long int> > hist_per_species;
   std::map< std::string, list<uint> > lengths;
+  std::map< std::string, unsigned long long int > total_length;
+  std::vector< std::map< std::string, list<uint> > > lengths_per_cardinality(histogram_size, lengths);
 
+  for (std::map<std::string, std::string*>::iterator it = species.begin(); it != species.end(); it++) {
+    hist_per_species[it->first].resize(histogram_size, 0);
+  }
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor * this_anchor = it->second;
     if (this_anchor->links.size()) {
@@ -286,21 +292,28 @@ void Graph::print_stats(int histogram_size)
         continue;
       }
       links_counter++;
-      if ((*p_link)->tags.size() > 1) {
+
+      int size = (*p_link)->tags.size();
+      if (size > histogram_size) {
+        size = histogram_size;
+      }
+      hist[size - 1]++;
+
+      if (size > 0) {
         for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
-          list<uint> *this_list = &(lengths[*(p_tag->species)]);
-          this_list->push_back(p_tag->end - p_tag->start + 1);
+          string this_species = *(p_tag->species);
+          uint this_length = p_tag->end - p_tag->start + 1;
+          hist_per_species[this_species][size - 1]++;
+          lengths[this_species].push_back(this_length);
+          lengths_per_cardinality[size - 1][this_species].push_back(this_length);
         }
       }
 
-      int size = (*p_link)->tags.size();
-      if (size < histogram_size) {
-        hist[size - 1]++;
-      } else {
-        hist[histogram_size - 1]++;
-      }
     }
   }
+  ios::fmtflags current_flags = cout.flags();
+  cout.setf(ios::fixed);
+  cout.precision(1);
   cout << "Graph has " << non_void_anchors_counter << " non-void anchors ("
       << anchors.size() << " in total) and " << links_counter << " links (edges)" << endl;
 
@@ -320,14 +333,40 @@ void Graph::print_stats(int histogram_size)
         break;
       }
     }
+    total_length[it->first] = sum;
     cout << " (total length = " << sum << ")" << endl;
   }
 
   cout << "Histogram of num. of regions per link" << endl;
-  for (int a=0; a < histogram_size - 1; a++) {
-    cout << a + 1 << ": " << hist[a] << endl;
+  for (int a=0; a < histogram_size; a++) {
+    if (a == histogram_size - 1) {
+      cout << "+\t" << hist[a] << " links:" << endl;
+    } else {
+      cout << a + 1 << "\t" << hist[a] << " links:" << endl;
+    }
+    for (std::map<std::string, list<uint> >::iterator it = lengths_per_cardinality[a].begin(); it != lengths_per_cardinality[a].end(); it++) {
+
+      cout << "\t" << it->first << "\t" << hist_per_species[it->first][a] << " lnk:";
+      list<uint> *this_list = &(it->second);
+      this_list->sort();
+      unsigned long long int sum = 0;
+      for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
+        sum += *p_length;
+      }
+      cout << "\tl=" << sum << "\t(" << 100.0f * sum / total_length[it->first] << "%)";
+      unsigned long long int acc = 0;
+      for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
+        acc += *p_length;
+        if (acc * 2 > sum) {
+          cout << "\tN50=" << *p_length;
+          break;
+        }
+      }
+      cout << endl;
+    }
+
   }
-  cout << "+: " << hist[histogram_size - 1] << endl;
+  cout.flags(current_flags);
 }
 
 
