@@ -8,6 +8,7 @@
 #include <iostream>
 #include <string>
 #include <list>
+#include <set>
 #include "link.h"
 using namespace std;
 
@@ -24,6 +25,7 @@ public:
     string id;
     uint num;
     std::list<Link*> links;
+    std::set<std::string*> species;
 
   protected:
 };

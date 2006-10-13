@@ -110,6 +110,11 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
       cerr << "Out of memory" << endl;
       return false;
     }
+    if (!species[this_species]) {
+      cout << "New species " << this_species << endl;
+      species[this_species] = new string(this_species);
+    }
+    anchor->species.insert(species[this_species]);
     if (last_species == this_species and
         last_chr == this_chr and
         last_end < this_start) {
@@ -128,18 +133,12 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
           cerr << "Error";
           exit(1);
         }
-        string *this_species = species[last_species];
-        if (!this_species) {
-          cout << "New species " << last_species << endl;
-          this_species = new string(last_species);
-          species[last_species] = this_species;
-        }
         string *this_chr = chrs[last_chr];
         if (!this_chr) {
           this_chr = new string(last_chr);
           chrs[last_chr] = this_chr;
         }
-        this_link->add_tag(this_species, this_chr, last_start, this_end, this_link_strand);
+        this_link->add_tag(species[this_species], this_chr, last_start, this_end, this_link_strand);
       }
     }
     last_anchor = anchor;
@@ -226,16 +225,10 @@ void Graph::print_anchors_histogram(std::ostream &out)
       hist_hits.resize(num, 0);
     }
     hist_hits[num - 1]++;
-    std::set<string> these_species;
-    for (std::list<Link*>::iterator p_link = this_anchor->links.begin(); p_link != this_anchor->links.end(); p_link++) {
-      if ((*p_link)->tags.size() > 1) {
-        for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
-          these_species.insert(*p_tag->species);
-        }
-      }
-    }
-    if (these_species.size() > 0 ) {
-      hist_species[these_species.size() - 1]++;
+    if (this_anchor->species.size() > 0 ) {
+      hist_species[this_anchor->species.size() - 1]++;
+    } else {
+      cerr << "Hmmm... There is an anchor (" << this_anchor->id << ") mapping on no species! :-S" << endl;
     }
   }
   out << "Histogram of num. of species per Anchor (in how many species each Anchor is found)" << endl;
