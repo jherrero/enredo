@@ -216,7 +216,9 @@ void Graph::minimize()
 void Graph::print_anchors_histogram(std::ostream &out)
 {
   std::vector<unsigned long long int> hist_hits;
+  std::map< std::string, unsigned long long int> hist_anchors_per_species;
   std::vector<unsigned long long int> hist_species(species.size(), 0);
+  std::map< std::string, unsigned long long int> hist_patterns;
 
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor *this_anchor = it->second;
@@ -227,11 +229,32 @@ void Graph::print_anchors_histogram(std::ostream &out)
     hist_hits[num - 1]++;
     if (this_anchor->species.size() > 0 ) {
       hist_species[this_anchor->species.size() - 1]++;
+      std::string pattern = "";
+      for (std::map<std::string, std::string*>::iterator it2 = species.begin(); it2 != species.end(); it2++) {
+        for (std::set<std::string*>::iterator it3 = this_anchor->species.begin(); it3 != this_anchor->species.end(); it3++) {
+          if (it2->second == *it3) {
+            hist_anchors_per_species[**it3]++;
+            if (pattern != "") {
+              pattern.append(" + ");
+            }
+            pattern.append(**it3);
+          }
+        }
+      }
+//       if (!hist_patterns[pattern]) {
+//         hist_patterns[pattern] = 1;
+//       } else {
+        hist_patterns[pattern]++;
+//       }
     } else {
       cerr << "Hmmm... There is an anchor (" << this_anchor->id << ") mapping on no species! :-S" << endl;
     }
   }
-  out << "Histogram of num. of species per Anchor (in how many species each Anchor is found)" << endl;
+  out << endl << "Histogram of num. of Anchors per species" << endl;
+  for (std::map< std::string, unsigned long long int>::iterator it = hist_anchors_per_species.begin(); it != hist_anchors_per_species.end(); it++) {
+    cout << it->first << ": " << it->second << " (" << (100.0f * it->second) / anchors.size() << "%)" << endl;
+  }
+  out << endl << "Histogram of num. of species per Anchor (in how many species each Anchor is found)" << endl;
   uint sum = 0;
   ios::fmtflags current_flags = out.flags();
   out.setf(ios::fixed);
@@ -242,7 +265,11 @@ void Graph::print_anchors_histogram(std::ostream &out)
   for (uint a = 0; a < hist_species.size(); a++) {
     out << a + 1 << ": " << hist_species[a] << " (" << (100.0f * hist_species[a]) / sum << "%)" << endl;
   }
-  out << "Histogram of num. of hits per Anchor (how many times each Anchor is found)" << endl;
+  out << endl << "The same, by set of species (in no particular order)" << endl;
+  for (std::map< std::string, unsigned long long int>::iterator it = hist_patterns.begin(); it != hist_patterns.end(); it++) {
+    cout << it->first << ": " << it->second << " (" << (100.0f * it->second) / sum << "%)" << endl;
+  }
+  out << endl << "Histogram of num. of hits per Anchor (how many times each Anchor is found)" << endl;
   sum = 0;
   for (uint a = 0; a < hist_hits.size(); a++) {
     sum += hist_hits[a];
@@ -329,34 +356,38 @@ void Graph::print_stats(int histogram_size)
     total_length[it->first] = sum;
     cout << " (total length = " << sum << ")" << endl;
   }
+  cout << endl;
 
-  cout << "Histogram of num. of regions per link" << endl;
-  for (int a=0; a < histogram_size; a++) {
-    if (a == histogram_size - 1) {
-      cout << "+\t" << hist[a] << " links:" << endl;
-    } else {
-      cout << a + 1 << "\t" << hist[a] << " links:" << endl;
-    }
-    for (std::map<std::string, list<uint> >::iterator it = lengths_per_cardinality[a].begin(); it != lengths_per_cardinality[a].end(); it++) {
+  cout << "Detailed N50 stats per species and cardinality" << endl;
+  for (std::map<std::string, list<uint> >::iterator it = lengths.begin(); it != lengths.end(); it++) {
+    cout << "|>|>|>|>|>|! " << it->first << " |" << endl;
+    cout << "|! Link cardinality |! Total num. of Links |! num of links |! Total Length |! length% |! N50 |" << endl;
+    for (int a=0; a < histogram_size; a++) {
+      if (a == histogram_size - 1) {
+        cout << "|! >" << a << " | " << hist[a];
+      } else {
+        cout << "|! " << a + 1 << " | " << hist[a];
+      }
 
-      cout << "\t" << it->first << "\t" << hist_per_species[it->first][a] << " lnk:";
-      list<uint> *this_list = &(it->second);
+      cout << " | " << hist_per_species[it->first][a] << " | ";
+      list<uint> *this_list = &lengths_per_cardinality[a][it->first];
       this_list->sort();
       unsigned long long int sum = 0;
       for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
         sum += *p_length;
       }
-      cout << "\tl=" << sum << "\t(" << 100.0f * sum / total_length[it->first] << "%)";
+      cout << sum << " | " << 100.0f * sum / total_length[it->first] << "% | ";
       unsigned long long int acc = 0;
       for (std::list<uint>::iterator p_length = this_list->begin(); p_length != this_list->end(); p_length++) {
         acc += *p_length;
         if (acc * 2 > sum) {
-          cout << "\tN50=" << *p_length;
+          cout << *p_length << " |";
           break;
         }
       }
       cout << endl;
     }
+    cout << endl;
 
   }
   cout.flags(current_flags);
