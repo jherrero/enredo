@@ -87,6 +87,16 @@ Default: 10000
 Ignore anchors with a score lower than this value.
 Default: 0
 
+* FOR MINIMIZING THE GRAPH *
+
+--max-path-dissimilarity:
+Allow to merge down paths if their dissimilarity is lower or equal to this
+threshold. For instance, the dissimilarity between paths A--B--C--D and
+A--B--C--E--D is one as there is one extra anchor in the second path. In
+this other example: A--B--C--D and A--C--B--D, the dissimilarity is 2 because
+in the second path an extra C has been inserted between A and B, and there is
+a C missing between B and D.
+Default: 0
 
 * FOR DEFINNING THE SYNTENIC REGIONS *
 

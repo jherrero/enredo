@@ -85,6 +85,7 @@ int main(int argc, char *argv[])
       << "Input-file: " << input_filename << endl
       << "min-score: " << min_score << endl
       << "max-gap-length: " << max_gap_length << endl
+      << "max-path-dissimilarity: " << path_dissimilarity << endl
       << "min-length: " << min_length << endl
       << "min-regions: " << min_regions << endl
       << "min-anchors: " << min_anchors << endl;
@@ -147,6 +148,9 @@ void print_help(void)
   cout << "Options:" << endl;
   cout << " --max-gap-length: maximum allowed gap between two anchors" << endl;
   cout << " --min-score: minimum score required to accept a hit" << endl;
+  cout << endl;
+  cout << " --max-path-dissimilarity: merge alternative paths in the graph if their"
+       << "       dissimilarity is up to this threshold (def: 0)" << endl;
   cout << endl;
   cout << " --min-length: minimum length of final syntenic block (def: 100000)" << endl;
   cout << " --min-regions: minimum number of region in the syntenic block (def: 2)" << endl;
