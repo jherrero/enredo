@@ -295,6 +295,7 @@ void Graph::print_stats(int histogram_size)
   std::map< std::string, list<uint> > lengths;
   std::map< std::string, unsigned long long int > total_length;
   std::vector< std::map< std::string, list<uint> > > lengths_per_cardinality(histogram_size, lengths);
+  std::map< std::string, std::vector< uint > > length_per_species_cardinality;
 
   for (std::map<std::string, std::string*>::iterator it = species.begin(); it != species.end(); it++) {
     hist_per_species[it->first].resize(histogram_size, 0);
@@ -320,12 +321,22 @@ void Graph::print_stats(int histogram_size)
       hist[size - 1]++;
 
       if (size > 0) {
+        std::map< std::string, unsigned int > cardinality_per_species;
         for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
           string this_species = *(p_tag->species);
           uint this_length = p_tag->end - p_tag->start + 1;
           hist_per_species[this_species][size - 1]++;
           lengths[this_species].push_back(this_length);
           lengths_per_cardinality[size - 1][this_species].push_back(this_length);
+          cardinality_per_species[this_species]++;
+        }
+        for (std::list<tag>::iterator p_tag = (*p_link)->tags.begin(); p_tag != (*p_link)->tags.end(); p_tag++) {
+          string this_species = *(p_tag->species);
+          uint this_length = p_tag->end - p_tag->start + 1;
+          if (length_per_species_cardinality[this_species].size() < cardinality_per_species[this_species]) {
+            length_per_species_cardinality[this_species].resize(cardinality_per_species[this_species], 0);
+          }
+          length_per_species_cardinality[this_species][cardinality_per_species[this_species]-1] += this_length;
         }
       }
 
@@ -335,7 +346,22 @@ void Graph::print_stats(int histogram_size)
   cout.setf(ios::fixed);
   cout.precision(1);
   cout << "Graph has " << non_void_anchors_counter << " non-void anchors ("
-      << anchors.size() << " in total) and " << links_counter << " links (edges)" << endl;
+      << anchors.size() << " in total) and " << links_counter << " links (edges)" << endl << endl;
+
+  cout << "Duplications according to graph (length in bp)" << endl;
+  cout << "|! species\t|! 1x\t|! 2x\t|! 3x\t|! 4x\t|! 5x\t|" << endl;
+  for (std::map<std::string, std::string*>::iterator it = species.begin(); it != species.end(); it++) {
+    cout << "|! " << it->first;
+    for (uint a = 0; a < 5; a++) {
+      if (a < length_per_species_cardinality[it->first].size()) {
+        cout << "\t| " << length_per_species_cardinality[it->first][a];
+      } else {
+        cout << "\t| 0";
+      }
+    }
+    cout << "\t|" << endl;
+  }
+  cout << endl;
 
   for (std::map<std::string, list<uint> >::iterator it = lengths.begin(); it != lengths.end(); it++) {
     cout << "N50 for " << it->first << ": ";
