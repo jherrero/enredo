@@ -27,6 +27,7 @@ int main(int argc, char *argv[])
   uint path_dissimilarity = 0;
   int histogram_size = 10;
   bool print_all = false;
+  bool print_stats = true;
   bool help = false;
   bool ret;
   string this_arg;
@@ -56,6 +57,8 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--histogram-size") and (a < argc - 1)) {
       a++;
       histogram_size = atoi(argv[a]);
+    } else if (this_arg == "--no-stats") {
+      print_stats = false;
     } else if (((this_arg == "--output-file") or (this_arg == "--output") or (this_arg == "-o"))and (a < argc - 1)) {
       a++;
       output_filename  = argv[a];
@@ -98,13 +101,17 @@ int main(int argc, char *argv[])
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
   }
-  my_graph.print_anchors_histogram();
+  if (print_stats) {
+    my_graph.print_anchors_histogram();
+  }
 
 
-  cout << endl
-      << " Stats before minimizing the Graph:" << endl
-      << "====================================" << endl;
-  my_graph.print_stats(histogram_size);
+  cout << endl;
+  if (print_stats) {
+    cout << " Stats before minimizing the Graph:" << endl
+        << "====================================" << endl;
+    my_graph.print_stats(histogram_size);
+  }
 
   my_graph.minimize();
   for (uint a = 0; a < path_dissimilarity; a++) {
@@ -112,10 +119,12 @@ int main(int argc, char *argv[])
     my_graph.minimize();
   }
 
-  cout << endl
-      << " Stats after minimizing the Graph:" << endl
-      << "===================================" << endl;
-  my_graph.print_stats(histogram_size);
+  if (print_stats) {
+    cout << endl
+        << " Stats after minimizing the Graph:" << endl
+        << "===================================" << endl;
+    my_graph.print_stats(histogram_size);
+  }
 
   cout << endl
       << " Resulting blocks:" << endl
