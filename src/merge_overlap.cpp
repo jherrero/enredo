@@ -33,6 +33,9 @@ int main(int argc, char *argv[])
     if (((this_arg == "--output") or (this_arg == "-o")) and (a < argc - 1)) {
       a++;
       output_filename = argv[a];
+    } else if ((this_arg == "--min-score") and (a < argc - 1)) {
+      a++;
+      min_score = atof(argv[a]);
     } else if ((this_arg == "--help") or (this_arg == "-h")) {
       help = true;
     } else if (!filename) {
@@ -276,7 +279,10 @@ void print_help(void)
 {
   cout << "MergeOverlap v" << VERSION << endl;
   cout << endl;
-  cout << "Usage: mergeoverlap anchors_file.txt" << endl;
+  cout << "Usage: mergeoverlap [options] anchors_file.txt" << endl;
+  cout << endl;
+  cout << "Options:" << endl;
+  cout << " --min-score: minimum score required to accept a hit" << endl;
   cout << endl;
   cout << " --help: prints this help" << endl;
   cout << endl;
