@@ -2,6 +2,8 @@
 #include "link.h"
 #include "anchor.h"
 #include <vector>
+#include <map>
+#include <cstdlib>
 
 Link::Link(Anchor* anchor1, Anchor* anchor2)
 {
@@ -33,140 +35,139 @@ void Link::add_tag(string *species, string *chr, int start, int end, short stran
 
 
 /*!
-    \fn Link::concatenate(Link* other_link)
+    \fn Link::try_to_concatenate_with(Link *other_link, short strand1, short strand2)
  */
-Link* Link::concatenate(Link* other_link)
+bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand2)
 {
-  // Get middle anchor
-  Anchor *middle_anchor = NULL;
-  if (this->anchor_list.back() == other_link->anchor_list.front() or this->anchor_list.back() == other_link->anchor_list.back()) {
-    middle_anchor = this->anchor_list.back();
-  } else if (this->anchor_list.front() == other_link->anchor_list.front() or this->anchor_list.front() == other_link->anchor_list.back()) {
-    middle_anchor = this->anchor_list.front();
-    this->reverse();
-  } else {
-    cerr << "Error while concatenating links!" << endl;
-    return NULL;
+  if (strand1 == 0) {
+    if (this->try_to_concatenate_with(other_link, 1, strand2)) {
+      return true;
+    } else {
+      return this->try_to_concatenate_with(other_link, -1, strand2);
+    }
   }
-  if (middle_anchor != other_link->anchor_list.front()) {
-    other_link->reverse();
+  if (strand2 == 0) {
+    if (this->try_to_concatenate_with(other_link, strand1, 1)) {
+      return true;
+    } else {
+      return this->try_to_concatenate_with(other_link, strand1, -1);
+    }
   }
-//   cout << "Middle anchor is " << middle_anchor->id << endl;
 
-  // Concatenate tags
-  bool * other_tag_has_been_concatenated;
-  other_tag_has_been_concatenated = new bool [other_link->tags.size()];
-  for (uint a = 0; a < other_link->tags.size(); a++) {
-    other_tag_has_been_concatenated[a] = false;
-  }
+  std::vector< std::list<tag>::iterator > this_tag_links_to(this->tags.size(), other_link->tags.end());
+  std::vector< std::list<tag>::iterator > other_tag_links_to(this->tags.size(), this->tags.end());
+  uint this_tag_counter = 0;
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
-    bool this_tag_has_been_concatenated = false;
-    int a = 0;
+    this_tag_counter++;
+    short str1 = strand1 * p_tag1->strand;
+    uint other_tag_counter = 0;
     for (list<tag>::iterator p_tag2 = other_link->tags.begin(); p_tag2 != other_link->tags.end(); p_tag2++) {
+      other_tag_counter++;
       if (p_tag1->species == p_tag2->species and p_tag1->chr == p_tag2->chr and p_tag1->start < p_tag2->end and p_tag2->start < p_tag1->end) {
-        if (other_tag_has_been_concatenated[a] or p_tag1->strand * p_tag2->strand == -1) {
+        short str2 = strand2 * p_tag2->strand;
+        if (str1 == 1 and str2 == 1) {
+          if (!(p_tag1->start < p_tag2->start and p_tag1->end < p_tag2->end)) {
+            // link goes and come back: they will be concatenated when studying the other anchor
+            continue;
+          }
+        } else if (str1 == -1 and str2 == -1) {
+          if (!(p_tag2->start < p_tag1->start and p_tag2->end < p_tag1->end)) {
+            // link goes and come back: they will be concatenated when studying the other anchor
+            continue;
+          }
+        } else if (str1 != 0 and str2 != 0) {
+          cerr << "Problem here (3) " << strand1 << " : " << strand2 << endl;
+          this->print();
+          other_link->print();
           continue;
         }
-        if (p_tag1->strand == 0) {
-          p_tag1->strand = p_tag2->strand;
+        if (other_tag_links_to[other_tag_counter - 1] == 0) {
+          continue;
         }
-        if (p_tag1->start < p_tag2->start and p_tag1->end < p_tag2->end) {
-          p_tag1->end = p_tag2->end;
-        } else if (p_tag1->start > p_tag2->start and p_tag1->end > p_tag2->end) {
-          p_tag1->start = p_tag2->start;
-        } else {
-          cerr << "Error while concatenating links! (1)" << endl;
-          exit(2);
-        }
-        this_tag_has_been_concatenated = true;
-        other_tag_has_been_concatenated[a] = true;
-        break;
+        other_tag_links_to[other_tag_counter - 1] = p_tag1;
+        this_tag_links_to[this_tag_counter - 1] = p_tag2;
+        continue;
       }
-      a++;
     }
-    if (!this_tag_has_been_concatenated) {
-      cerr << "Error while concatenating links! (2)" << endl;
-      exit(2);
+    if (this_tag_links_to[this_tag_counter - 1] == other_link->tags.end()) {
+      return false;
     }
   }
-  for (uint a = 0; a < other_link->tags.size(); a++) {
-    if (!other_tag_has_been_concatenated[a]) {
-      cerr << "Error while concatenating links! (3)" << endl;
-      exit(2);
+  for (uint a = 0; a < other_tag_links_to.size(); a++) {
+    if (other_tag_links_to[a] == this->tags.end()) {
+      return false;
     }
   }
 
-  // Append anchors from other_link to this link
-  for (list<Anchor*>::iterator anchor_it = ++other_link->anchor_list.begin(); anchor_it != other_link->anchor_list.end(); anchor_it++) {
-//     cout << " Appending anchor " << (*anchor_it)->id << endl;
-    this->anchor_list.push_back(*anchor_it);
+  if (strand1 == -1) {
+    this->reverse();
+  }
+  if (strand2 == -1) {
+    other_link->reverse();
   }
 
-  if (this->anchor_list.front() != middle_anchor) {
-    // Remove this and other_link from middle anchor
+  // Concatenate the links
+  this_tag_counter = 0;
+  for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
+    std::list<tag>::iterator p_tag2 = this_tag_links_to[this_tag_counter];
+//     cout << "concatenating (" << *p_tag1->species << ":" << *p_tag1->chr << ":" << p_tag1->start << ":"
+//         << p_tag1->end << ":" << p_tag1->strand << ")"
+//         << " -- (" << *p_tag2->species << ":" << *p_tag2->chr << ":" << p_tag2->start << ":"
+//         << p_tag2->end << ":" << p_tag2->strand << ")";
+    if (p_tag1->strand != 0 and p_tag1->strand == -p_tag2->strand) {
+      cerr << "Problem here (5)" << endl;
+    } else if (p_tag1->strand == 1 or p_tag2->strand == 1) {
+      p_tag1->end = p_tag2->end;
+    } else if (p_tag1->strand == -1 or p_tag2->strand == -1) {
+      p_tag1->start = p_tag2->start;
+    }
+    if (p_tag1->strand == 0 ) {
+      p_tag1->strand = p_tag2->strand;
+    }
+//     cout << " => (" << *p_tag1->species << ":" << *p_tag1->chr << ":" << p_tag1->start << ":"
+//         << p_tag1->end << ":" << p_tag1->strand << ")" << endl;
+    this_tag_counter++;
+  }
+
+  Anchor *front_anchor = this->anchor_list.front();
+  Anchor *middle_anchor = this->anchor_list.back();
+  Anchor *back_anchor = other_link->anchor_list.back();
+  if (middle_anchor != other_link->anchor_list.front()) {
+    cerr << "Problem here (6)" << endl;
+    exit(6);
+  }
+
+  // Delete other link from middle and back anchors
+  for (list<Link*>::iterator p_link_it = middle_anchor->links.begin(); p_link_it != middle_anchor->links.end(); p_link_it++) {
+    if (*p_link_it == other_link) {
+      p_link_it = middle_anchor->links.erase(p_link_it);
+    }
+  }
+  for (list<Link*>::iterator p_link_it = back_anchor->links.begin(); p_link_it != back_anchor->links.end(); p_link_it++) {
+    if (*p_link_it == other_link) {
+      p_link_it = back_anchor->links.erase(p_link_it);
+    }
+  }
+
+  // Delete this link from middle anchor if needed
+  if (front_anchor != middle_anchor) {
+    // Remove this link from middle anchor
     for (list<Link*>::iterator p_link_it = middle_anchor->links.begin(); p_link_it != middle_anchor->links.end(); p_link_it++) {
       while (*p_link_it == this or *p_link_it == other_link) {
         p_link_it = middle_anchor->links.erase(p_link_it);
       }
     }
-  } else {
-    // Remove other_link only from middle anchor
-    for (list<Link*>::iterator p_link_it = middle_anchor->links.begin(); p_link_it != middle_anchor->links.end(); p_link_it++) {
-      if (*p_link_it == other_link) {
-        p_link_it = middle_anchor->links.erase(p_link_it);
-        break;
-      }
-    }
+  }
+  if (front_anchor != back_anchor) {
+    // Add this link to back anchor
+    back_anchor->add_Link(this);
   }
 
-  // Remove other_link from last anchor
-  if (this->anchor_list.front() != this->anchor_list.back()) {
-    for (list<Link*>::iterator p_link_it = other_link->anchor_list.back()->links.begin(); p_link_it != other_link->anchor_list.back()->links.end(); p_link_it++) {
-      if (*p_link_it == other_link) {
-        *p_link_it = this;
-        break;
-      }
-    }
-    delete(other_link);
-  } else {
-    for (list<Link*>::iterator p_link_it = other_link->anchor_list.back()->links.begin(); p_link_it != other_link->anchor_list.back()->links.end(); p_link_it++) {
-      if (*p_link_it == other_link) {
-        other_link->anchor_list.back()->links.erase(p_link_it);
-        break;
-      }
-    }
+  // Append anchors from other_link to this link
+  for (list<Anchor*>::iterator anchor_it = ++other_link->anchor_list.begin(); anchor_it != other_link->anchor_list.end(); anchor_it++) {
+    this->anchor_list.push_back(*anchor_it);
   }
 
-  return this;
-}
-
-
-/*!
-    \fn Link::can_be_concatenated_with(Link *other_link)
- */
-bool Link::can_be_concatenated_with(Link *other_link)
-{
-  std::vector<bool> other_tag_can_be_concatenated(this->tags.size(), false);
-  for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
-    bool this_tag_can_be_concatenated = false;
-    int other_count = 0;
-    for (list<tag>::iterator p_tag2 = other_link->tags.begin(); p_tag2 != other_link->tags.end(); p_tag2++) {
-      if (p_tag1->species == p_tag2->species and p_tag1->chr == p_tag2->chr and p_tag1->start < p_tag2->end and p_tag2->start < p_tag1->end) {
-        this_tag_can_be_concatenated = true;
-        other_tag_can_be_concatenated[other_count] = true;
-        continue;
-      }
-      other_count++;
-    }
-    if (!this_tag_can_be_concatenated) {
-      return false;
-    }
-  }
-  for (uint a = 0; a < other_link->tags.size(); a++) {
-    if (!other_tag_can_be_concatenated[a]) {
-      return false;
-    }
-  }
   return true;
 }
 
@@ -197,10 +198,21 @@ void Link::print(ostream &out)
   }
   out << "  (has " << this->tags.size() << " tags)" << endl;
   for (list<tag>::iterator p_tag = this->tags.begin(); p_tag != this->tags.end(); p_tag++) {
-    out << "       " << *p_tag->species << ":" << *p_tag->chr << ":"
-        << p_tag->start << ":" << p_tag->end
-        << " [" << p_tag->strand << "] l=" << (p_tag->end - p_tag->start + 1) << endl;
+    out << "       ";
+    print_tag(*p_tag, out);
+    out << endl;
   }
+}
+
+
+/*!
+    \fn Link::print_tag(tag this_tag, ostream &out)
+ */
+void print_tag(tag this_tag, ostream &out)
+{
+  out << *this_tag.species << ":" << *this_tag.chr << ":"
+      << this_tag.start << ":" << this_tag.end
+      << " [" << this_tag.strand << "] l=" << (this_tag.end - this_tag.start + 1);
 }
 
 

@@ -20,6 +20,7 @@ struct tag {
   short strand; // 1 when tag start => end corresponds to anchor_list.front() => anchor_list.back()
                 // and -1 when start => end corresponds to anchor_list.back() => anchor_list.front()
 };
+    void print_tag(tag this_tag, ostream &out = cout);
 
 class Link{
 public:
@@ -27,9 +28,8 @@ public:
 
     ~Link();
     void add_tag(string *species, string *chr, int start, int end, short strand);
-    Link* concatenate(Link* other_link);
     Link* merge(Link* other_link);
-    bool can_be_concatenated_with(Link *other_link);
+    bool try_to_concatenate_with(Link *other_link, short strand1 = 0, short strand2 = 0);
     void reverse();
     void print(ostream &out = cout);
     uint get_shortest_length();
