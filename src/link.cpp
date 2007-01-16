@@ -76,12 +76,11 @@ bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand
             continue;
           }
         } else if (str1 != 0 and str2 != 0) {
-          cerr << "Problem here (3) " << strand1 << " : " << strand2 << endl;
-          this->print();
-          other_link->print();
-          continue;
+          // testing wrong strand when 2 strands can be tested. return false.
+          return false;
         }
-        if (other_tag_links_to[other_tag_counter - 1] == 0) {
+        if (other_tag_links_to[other_tag_counter - 1] != this->tags.end()) {
+          // This other tag already matches a tag. Skip this.
           continue;
         }
         other_tag_links_to[other_tag_counter - 1] = p_tag1;
