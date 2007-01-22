@@ -21,6 +21,7 @@ public:
     Link* get_direct_Link(Anchor *other_anchor);
     void add_Link(Link *link);
     void print(ostream &out = cout);
+    uint minimize(void);
 
     string id;
     uint num;
