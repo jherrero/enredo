@@ -12,6 +12,17 @@ Link::Link(Anchor* anchor1, Anchor* anchor2)
 //   cerr << "New link" << anchor1->id << ":" << anchor2->id << endl;
 }
 
+/*!
+    \fn Link::Link(Link my_link)
+ */
+Link::Link(Link *my_link)
+{
+  
+  for (list<Anchor*>::iterator p_anchor_it = my_link->anchor_list.begin(); p_anchor_it != my_link->anchor_list.end(); p_anchor_it++) {
+    this->anchor_list.push_back(*p_anchor_it);
+  }
+}
+
 
 Link::~Link()
 {
@@ -35,27 +46,29 @@ void Link::add_tag(string *species, string *chr, int start, int end, short stran
 
 
 /*!
-    \fn Link::try_to_concatenate_with(Link *other_link, short strand1, short strand2)
+    \fn Link::get_matching_tags(Link *other_link, short strand1, short strand2)
  */
-bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand2)
+std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link, short strand1, short strand2)
 {
+  std::vector< std::list<tag>::iterator > this_tag_links_to(this->tags.size(), other_link->tags.end());
+  std::vector< std::list<tag>::iterator > other_tag_links_to(other_link->tags.size(), this->tags.end());
   if (strand1 == 0) {
-    if (this->try_to_concatenate_with(other_link, 1, strand2)) {
-      return true;
+    this_tag_links_to = this->get_matching_tags(other_link, 1, strand2);
+    if (!this_tag_links_to.empty()) {
+      return this_tag_links_to;
     } else {
-      return this->try_to_concatenate_with(other_link, -1, strand2);
+      return this->get_matching_tags(other_link, -1, strand2);
     }
   }
   if (strand2 == 0) {
-    if (this->try_to_concatenate_with(other_link, strand1, 1)) {
-      return true;
+    this_tag_links_to = this->get_matching_tags(other_link, strand1, 1);
+    if (!this_tag_links_to.empty()) {
+      return this_tag_links_to;
     } else {
-      return this->try_to_concatenate_with(other_link, strand1, -1);
+      return this->get_matching_tags(other_link, strand1, -1);
     }
   }
 
-  std::vector< std::list<tag>::iterator > this_tag_links_to(this->tags.size(), other_link->tags.end());
-  std::vector< std::list<tag>::iterator > other_tag_links_to(this->tags.size(), this->tags.end());
   uint this_tag_counter = 0;
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
     this_tag_counter++;
@@ -76,8 +89,9 @@ bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand
             continue;
           }
         } else if (str1 != 0 and str2 != 0) {
-          // testing wrong strand when 2 strands can be tested. return false.
-          return false;
+          // testing wrong strand when 2 strands can be tested. return void vector
+          this_tag_links_to.clear();
+          return this_tag_links_to;
         }
         if (other_tag_links_to[other_tag_counter - 1] != this->tags.end()) {
           // This other tag already matches a tag. Skip this.
@@ -85,18 +99,61 @@ bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand
         }
         other_tag_links_to[other_tag_counter - 1] = p_tag1;
         this_tag_links_to[this_tag_counter - 1] = p_tag2;
-        continue;
       }
     }
-    if (this_tag_links_to[this_tag_counter - 1] == other_link->tags.end()) {
-      return false;
-    }
   }
+
   for (uint a = 0; a < other_tag_links_to.size(); a++) {
+    // Check if any of the other tags has not been linked
     if (other_tag_links_to[a] == this->tags.end()) {
-      return false;
+      this_tag_links_to.clear();
+      return this_tag_links_to;
+    }
+    // Check if any two of the other tags link to the same tag of this link
+    for (uint b = a + 1; b < other_tag_links_to.size(); b++) {
+      if (other_tag_links_to[a] == other_tag_links_to[b]) {
+        this_tag_links_to.clear();
+        return this_tag_links_to;
+      }
     }
   }
+  return this_tag_links_to;
+}
+
+
+/*!
+    \fn Link::try_to_concatenate_with(Link *other_link, short strand1, short strand2)
+ */
+bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand2)
+{
+  if (strand1 == 0) {
+    if (this->try_to_concatenate_with(other_link, 1, strand2)) {
+      return true;
+    } else {
+      return this->try_to_concatenate_with(other_link, -1, strand2);
+    }
+  }
+  if (strand2 == 0) {
+    if (this->try_to_concatenate_with(other_link, strand1, 1)) {
+      return true;
+    } else {
+      return this->try_to_concatenate_with(other_link, strand1, -1);
+    }
+  }
+
+  std::vector< std::list<tag>::iterator > this_tag_links_to = this->get_matching_tags(other_link, strand1, strand2);
+  if (this_tag_links_to.empty()) {
+    // vector will be empty if any of the tags in the other_link has no match in this link
+    return false;
+  } else {
+    // check that all tags in this link have a match in the other_link
+    for (uint a = 0; a < this_tag_links_to.size(); a++) {
+      if (this_tag_links_to[a] == other_link->tags.end()) {
+        cerr << "ERROR. One of the tags links to nothing (should have been detected before)";
+        return false;
+      }
+    }
+  } 
 
   if (strand1 == -1) {
     this->reverse();
@@ -106,7 +163,7 @@ bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand
   }
 
   // Concatenate the links
-  this_tag_counter = 0;
+  uint this_tag_counter = 0;
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
     std::list<tag>::iterator p_tag2 = this_tag_links_to[this_tag_counter];
 //     cout << "concatenating (" << *p_tag1->species << ":" << *p_tag1->chr << ":" << p_tag1->start << ":"
@@ -192,15 +249,16 @@ void Link::print(ostream &out)
 //   if (this->tags.size() == 1 or this->anchor_list.size() < 3) {
 //     return;
 //   }
+  out << "block";
   for (std::list<Anchor*>::iterator p_anchor_it = this->anchor_list.begin(); p_anchor_it != this->anchor_list.end(); p_anchor_it++) {
     out << " - " << (*p_anchor_it)->id;
   }
-  out << "  (has " << this->tags.size() << " tags)" << endl;
+  out << "  (made of " << this->tags.size() << " genomic regions)" << endl;
   for (list<tag>::iterator p_tag = this->tags.begin(); p_tag != this->tags.end(); p_tag++) {
-    out << "       ";
     print_tag(*p_tag, out);
     out << endl;
   }
+  out << endl;
 }
 
 
@@ -390,3 +448,5 @@ uint Link::get_num_of_mismatches(Link* other_link)
 //   cout << distance << endl;
   return distance;
 }
+
+

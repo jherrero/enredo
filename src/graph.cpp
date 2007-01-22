@@ -178,37 +178,7 @@ void Graph::minimize()
 //     } else {
 //       continue;
 //     }
-    bool merge_event;
-    do {
-      merge_event = false;
-      for (std::list<Link*>::iterator p_link1 = this_anchor->links.begin(); p_link1 != this_anchor->links.end() and !merge_event; p_link1++) {
-        short strand1;
-        if ((*p_link1)->anchor_list.front() == (*p_link1)->anchor_list.back()) {
-          strand1 = 0;
-        } else if ((*p_link1)->anchor_list.back() == this_anchor) {
-          strand1 = 1;
-        } else if ((*p_link1)->anchor_list.front() == this_anchor) {
-          strand1 = -1;
-        }
-        for (std::list<Link*>::iterator p_link2 = this_anchor->links.begin(); p_link2 != p_link1 and !merge_event; p_link2++) {
-          if ((*p_link2)->tags.size() != (*p_link1)->tags.size()) {
-            continue;
-          }
-          short strand2;
-          if ((*p_link2)->anchor_list.front() == (*p_link2)->anchor_list.back()) {
-            strand2 = 0;
-          } else if ((*p_link2)->anchor_list.back() == this_anchor) {
-              strand2 = -1;
-          } else if ((*p_link2)->anchor_list.front() == this_anchor) {
-            strand2 = 1;
-          }
-          if ((*p_link1)->try_to_concatenate_with(*p_link2, strand1, strand2)) {
-            merge_event = true;
-            count++;
-          }
-        }
-      }
-    } while (merge_event);
+    count += this_anchor->minimize();
   }
   cout << count << " merges." << endl;
   
@@ -488,20 +458,163 @@ void Graph::merge_alternative_paths(uint max_anchors)
 void Graph::simplify(uint min_anchors, uint min_regions, uint min_length)
 {
   cout << "Simplifying graph..." << endl;
+  // Get set of links that won't be selected as syntenic regions but contain enough regions to be splitted
   set<Link*> all_links;
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor * this_anchor = it->second;
     for (list<Link*>::iterator p_link_it = this_anchor->links.begin(); p_link_it != this_anchor->links.end(); p_link_it++) {
       Link * this_link = *p_link_it;
-      if (this_link->anchor_list.size() >= min_anchors and this_link->tags.size() >= min_regions and this_link->get_shortest_length() >= min_length) {
-        all_links.insert(this_link).second;
+      if (this_link->tags.size() > min_regions and
+          (this_link->anchor_list.size() < min_anchors or this_link->get_shortest_length() < min_length)) {
+        all_links.insert(this_link);
       }
     }
   }
+
+  uint split_count = 0;
+
+  // See if any of these blocks can be splitted in order to enlarge adjacent blocks
   for (std::set<Link*>::iterator p_link_it = all_links.begin(); p_link_it != all_links.end(); p_link_it++) {
-    //TODO: implement me! Look for links that won't be selected as syntenic regions and try to break them
-    // in order to potentially enlarge neighbouring links
+    // TODO: Check what should happen when front_anchor == back_anchor
+    Anchor *front_anchor = (*p_link_it)->anchor_list.front();
+    Anchor *back_anchor = (*p_link_it)->anchor_list.back();
+    set<Link*> front_links;
+    set<Link*> back_links;
+    for (list<Link*>::iterator p_front_link_it = front_anchor->links.begin(); p_front_link_it != front_anchor->links.end(); p_front_link_it++) {
+      Link *this_link = *p_front_link_it;
+      if (this_link != *p_link_it and this_link->tags.size() < (*p_link_it)->tags.size() and this_link->tags.size() >= min_regions) {
+        front_links.insert(this_link);
+      }
+    }
+    for (list<Link*>::iterator p_back_link_it = back_anchor->links.begin(); p_back_link_it != back_anchor->links.end(); p_back_link_it++) {
+      Link *this_link = *p_back_link_it;
+      if (this_link != *p_link_it and this_link->tags.size() < (*p_link_it)->tags.size() and this_link->tags.size() >= min_regions) {
+        back_links.insert(this_link);
+      }
+    }
+    // test empty front or back links (or just 1?)
+    if (front_links.size() == 0 or back_links.size() == 0) {
+      continue;
+    }
+    // TODO spot matches front -- partial tested -- back
+    bool split = false;
+    do {
+/*      cout << "------------------------------------" << endl;
+      cout << "Simplifying ";
+      (*p_link_it)->print();
+      cout << "Front links:" << endl;
+      for (std::set<Link*>::iterator p_front_it = front_links.begin(); p_front_it != front_links.end(); p_front_it++) {
+        (*p_front_it)->print();
+      }
+      cout << "Back links:" << endl;
+      for (std::set<Link*>::iterator p_back_it = back_links.begin(); p_back_it != back_links.end(); p_back_it++) {
+        (*p_back_it)->print();
+      }
+      cout << "------------------------------------" << endl;*/
+      split = false;
+      for (std::set<Link*>::iterator p_back_it = back_links.begin(); 
+           !split and (p_back_it != back_links.end()); p_back_it++) {
+        Link* back_link = *p_back_it;
+        short back_strand;
+        if (back_link->anchor_list.front() == back_link->anchor_list.back()) {
+          // Cannot determine the strand. Use 0 which will try both strands
+          back_strand = 0;
+        } else if (back_link->anchor_list.back() == back_anchor) {
+          back_strand = -1;
+        } else if (back_link->anchor_list.front() == back_anchor) {
+          back_strand = 1;
+        }
+        std::vector< std::list<tag>::iterator > this_tag_links_to_back =
+            (*p_link_it)->get_matching_tags(back_link, 1, back_strand);
+        if (this_tag_links_to_back.empty()) {
+          continue;
+        }
+  
+        (*p_link_it)->reverse();
+        for (std::set<Link*>::iterator p_front_it = front_links.begin();
+             !split and (p_front_it != front_links.end()); p_front_it++) {
+          Link* front_link = *p_front_it;
+          if (front_link == back_link) {
+//             cerr << "Self-link" << endl;
+            continue;
+            exit(11);
+          }
+          short front_strand;
+          if (front_link->anchor_list.front() == front_link->anchor_list.back()) {
+            front_strand = 0;
+          } else if (front_link->anchor_list.back() == front_anchor) {
+            front_strand = -1;
+          } else if (front_link->anchor_list.front() == front_anchor) {
+            front_strand = 1;
+          }
+          std::vector< std::list<tag>::iterator > this_tag_links_to_front =
+              (*p_link_it)->get_matching_tags(front_link, 1, front_strand);
+          if (this_tag_links_to_front.empty()) {
+            continue;
+          }
+          if (this_tag_links_to_front.size() != this_tag_links_to_back.size()) {
+            cerr << "THIS SHOULD NEVER HAPPEN: lists for front and back do not have the same length: " <<
+                this_tag_links_to_front.size() << " -- " << this_tag_links_to_back.size() << endl;
+            exit(1);
+          }
+          bool should_be_simplified = true;
+          uint number_of_matches = 0;
+          std::list<tag>::iterator p_center_tag_it = (*p_link_it)->tags.begin();
+          for (uint i=0; i< this_tag_links_to_front.size(); i++) {
+//             cout << i+1 << " : ";
+            if (this_tag_links_to_front[i] != front_link->tags.end() and this_tag_links_to_back[i] != back_link->tags.end()) {
+              number_of_matches++;
+            } else if (this_tag_links_to_front[i] != front_link->tags.end() or this_tag_links_to_back[i] != back_link->tags.end()) {
+              should_be_simplified = false;
+  //             continue;
+            }
+/*            if (this_tag_links_to_front[i] != front_link->tags.end()) {
+              print_tag(*this_tag_links_to_front[i]);
+            } else {
+              cout << " ------------------- ";
+            }
+            cout << " :: ";
+            print_tag(*(p_center_tag_it++));
+            cout << " :: ";
+            if (this_tag_links_to_back[i] != back_link->tags.end()) {
+              print_tag(*this_tag_links_to_back[i]);
+            } else {
+              cout << " ------------------- ";
+            }
+            cout << endl;*/
+          }
+//           cout << " ==> " << number_of_matches << " (" << should_be_simplified << ")" << endl;
+          if (should_be_simplified and number_of_matches >= min_regions and number_of_matches < this_tag_links_to_front.size()) {
+            // Split this link. A posterior loop of minimization will take care of joining the edges
+            split_count++;
+            Link* new_link = new Link(*p_link_it);
+            std::list<tag>::iterator p_center_tag_it = (*p_link_it)->tags.begin();
+            list<tag> tmp_tags;
+            for (uint i=0; i< this_tag_links_to_front.size(); i++) {
+              if (this_tag_links_to_front[i] != front_link->tags.end() and this_tag_links_to_back[i] != back_link->tags.end()) {
+                new_link->tags.push_back(*p_center_tag_it);
+              } else {
+                tmp_tags.push_back(*p_center_tag_it);
+              }
+              p_center_tag_it++;
+            }
+            if (tmp_tags.size() == 0) {
+              cout << "Leaving empty link" << endl;
+              exit(1);
+            }
+            (*p_link_it)->tags = tmp_tags;
+//             new_link->print();
+//             (*p_link_it)->print();
+            new_link->anchor_list.front()->add_Link(new_link);
+            new_link->anchor_list.back()->add_Link(new_link);
+            split = true;
+          }
+        }
+        (*p_link_it)->reverse();
+      }
+    } while (split);
   }
+  cout << split_count << " splits." << endl;
 }
 
 
@@ -745,3 +858,4 @@ void Graph::study_anchors(void)
   cout << singular_other_count << " other situations + singularity." << endl;
   cout << count << " merges." << endl;
 }
+

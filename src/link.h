@@ -7,6 +7,7 @@
 
 #include <string>
 #include <list>
+#include <vector>
 
 using namespace std;
 
@@ -25,6 +26,7 @@ struct tag {
 class Link{
 public:
   Link(Anchor *anchor1, Anchor *anchor2);
+  Link(Link *my_link);
 
     ~Link();
     void add_tag(string *species, string *chr, int start, int end, short strand);
@@ -35,6 +37,7 @@ public:
     uint get_shortest_length();
     bool is_an_alternative_path_of(Link* other_link);
     uint get_num_of_mismatches(Link* other_link);
+    std::vector< std::list<tag>::iterator > get_matching_tags(Link *other_link, short strand1 = 0, short strand2 = 0);
 
     list<Anchor*> anchor_list;
 
