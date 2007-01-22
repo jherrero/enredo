@@ -68,14 +68,14 @@ MAKEINFO = @MAKEINFO@
 PACKAGE = @PACKAGE@
 VERSION = @VERSION@
 
-bin_PROGRAMS = syntenygraph mergeoverlap
-syntenygraph_SOURCES = syntenygraph.cpp anchor.cpp graph.cpp link.cpp
+bin_PROGRAMS = mergeoverlap enredo
+enredo_SOURCES = enredo.cpp anchor.cpp graph.cpp link.cpp
 
 # set the include path found by configure
 INCLUDES = $(all_includes)
 
 # the library search path.
-syntenygraph_LDFLAGS = $(all_libraries) 
+enredo_LDFLAGS = $(all_libraries) 
 noinst_HEADERS = anchor.h graph.h link.h
 mergeoverlap_SOURCES = merge_overlap.cpp
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
@@ -88,13 +88,13 @@ DEFS = @DEFS@ -I. -I$(srcdir) -I..
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
-syntenygraph_OBJECTS =  syntenygraph.o anchor.o graph.o link.o
-syntenygraph_LDADD = $(LDADD)
-syntenygraph_DEPENDENCIES = 
 mergeoverlap_OBJECTS =  merge_overlap.o
 mergeoverlap_LDADD = $(LDADD)
 mergeoverlap_DEPENDENCIES = 
 mergeoverlap_LDFLAGS = 
+enredo_OBJECTS =  enredo.o anchor.o graph.o link.o
+enredo_LDADD = $(LDADD)
+enredo_DEPENDENCIES = 
 CXXFLAGS = @CXXFLAGS@
 CXXCOMPILE = $(CXX) $(DEFS) $(INCLUDES) $(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)
 CXXLD = $(CXX)
@@ -108,8 +108,8 @@ DISTFILES = $(DIST_COMMON) $(SOURCES) $(HEADERS) $(TEXINFOS) $(EXTRA_DIST)
 
 TAR = tar
 GZIP_ENV = --best
-SOURCES = $(syntenygraph_SOURCES) $(mergeoverlap_SOURCES)
-OBJECTS = $(syntenygraph_OBJECTS) $(mergeoverlap_OBJECTS)
+SOURCES = $(mergeoverlap_SOURCES) $(enredo_SOURCES)
+OBJECTS = $(mergeoverlap_OBJECTS) $(enredo_OBJECTS)
 
 all: all-redirect
 .SUFFIXES:
@@ -166,13 +166,13 @@ distclean-compile:
 
 maintainer-clean-compile:
 
-syntenygraph: $(syntenygraph_OBJECTS) $(syntenygraph_DEPENDENCIES)
-	@rm -f syntenygraph
-	$(CXXLINK) $(syntenygraph_LDFLAGS) $(syntenygraph_OBJECTS) $(syntenygraph_LDADD) $(LIBS)
-
 mergeoverlap: $(mergeoverlap_OBJECTS) $(mergeoverlap_DEPENDENCIES)
 	@rm -f mergeoverlap
 	$(CXXLINK) $(mergeoverlap_LDFLAGS) $(mergeoverlap_OBJECTS) $(mergeoverlap_LDADD) $(LIBS)
+
+enredo: $(enredo_OBJECTS) $(enredo_DEPENDENCIES)
+	@rm -f enredo
+	$(CXXLINK) $(enredo_LDFLAGS) $(enredo_OBJECTS) $(enredo_LDADD) $(LIBS)
 .cpp.o:
 	$(CXXCOMPILE) -c $<
 
