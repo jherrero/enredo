@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
   Graph my_graph;
   char *input_filename = NULL;
   char *output_filename = NULL;
-  uint max_gap_length = 10000;
+  uint max_gap_length = 100000;
   float min_score = 0.0f;
   uint min_length = 100000;
   uint min_regions = 2;
@@ -188,7 +188,7 @@ void print_help(void)
       << "Usage: enredo [options] anchors_file.txt" << endl
       << endl
       << "Options:" << endl
-      << " --max-gap-length: maximum allowed gap between two anchors" << endl
+      << " --max-gap-length: maximum allowed gap between two anchors (def: 100000)"  << endl
       << " --min-score: minimum score required to accept a hit" << endl
       << endl
       << " --max-path-dissimilarity: merge alternative paths in the graph if their" << endl
