@@ -24,6 +24,7 @@ int main(int argc, char *argv[])
   uint min_length = 100000;
   uint min_regions = 2;
   uint min_anchors = 3;
+  float max_ratio = 0.0f;
   uint path_dissimilarity = 0;
   bool simplify_graph = false;
   int histogram_size = 10;
@@ -55,6 +56,9 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--min-anchors") and (a < argc - 1)) {
       a++;
       min_anchors = atoi(argv[a]);
+    } else if ((this_arg == "--max-ratio") and (a < argc - 1)) {
+      a++;
+      max_ratio = atof(argv[a]);
     } else if (this_arg == "--all") {
       print_all = true;
     } else if ((this_arg == "--histogram-size") and (a < argc - 1)) {
@@ -90,7 +94,13 @@ int main(int argc, char *argv[])
       << "max-path-dissimilarity: " << path_dissimilarity << endl
       << "min-length: " << min_length << endl
       << "min-regions: " << min_regions << endl
-      << "min-anchors: " << min_anchors << endl
+      << "min-anchors: " << min_anchors << endl;
+  if (max_ratio>1.0f) {
+    cout << "max-ratio: " << max_ratio << endl;
+  } else {
+    cout << "max-ratio: off" << endl;
+  }
+  cout
       << "simplify-graph: " << (simplify_graph?"yes":"no") << endl
       << "print-all: " << (print_all?"yes":"no") << endl;
 
@@ -127,7 +137,7 @@ int main(int argc, char *argv[])
     my_graph.print_stats(histogram_size);
   }
 
-  my_graph.study_anchors();
+//   my_graph.study_anchors();
   if (simplify_graph) {
     my_graph.simplify(min_anchors, min_regions, min_length);
     my_graph.minimize();
@@ -135,9 +145,14 @@ int main(int argc, char *argv[])
       cout << endl
           << " Stats after simplifying the Graph:" << endl
           << "===================================" << endl;
-//       my_graph.print_stats(histogram_size);
+      my_graph.print_stats(histogram_size);
     }
-    my_graph.study_anchors();
+//     my_graph.study_anchors();
+  }
+  if (max_ratio > 1.0f) {
+    my_graph.split_unbalanced_links(max_ratio);
+    my_graph.minimize();
+    my_graph.print_stats(histogram_size);
   }
   if (print_all) {
     min_length = 1;
@@ -166,7 +181,13 @@ int main(int argc, char *argv[])
         << "# max-path-dissimilarity: " << path_dissimilarity << endl
         << "# min-length: " << min_length << endl
         << "# min-regions: " << min_regions << endl
-        << "# min-anchors: " << min_anchors << endl
+        << "# min-anchors: " << min_anchors << endl;
+    if (max_ratio>1.0f) {
+      output_stream << "# max-ratio: " << max_ratio << endl;
+    } else {
+      output_stream << "# max-ratio: off" << endl;
+    }
+    output_stream 
         << "# simplify-graph: " << (simplify_graph?"yes":"no") << endl
         << "# print-all: " << (print_all?"yes":"no") << endl
         << endl;

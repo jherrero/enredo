@@ -488,7 +488,7 @@ void Graph::simplify(uint min_anchors, uint min_regions, uint min_length)
     }
     for (list<Link*>::iterator p_back_link_it = back_anchor->links.begin(); p_back_link_it != back_anchor->links.end(); p_back_link_it++) {
       Link *this_link = *p_back_link_it;
-      if (this_link != *p_link_it and this_link->tags.size() < (*p_link_it)->tags.size() and this_link->tags.size() >= min_regions) {
+      if (this_link != *p_link_it and this_link->tags.size() < (*p_link_it)->tags.size()) {
         back_links.insert(this_link);
       }
     }
@@ -859,3 +859,73 @@ void Graph::study_anchors(void)
   cout << count << " merges." << endl;
 }
 
+
+
+/*!
+    \fn Graph::split_unbalanced_links(float max_ratio)
+ */
+void Graph::split_unbalanced_links(float max_ratio)
+{
+  if (max_ratio <= 1.0) {
+    return;
+  }
+
+  cout << "Edit unbalanced links..." << endl;
+
+  uint unbalanced_segments_counter = 0;
+  uint unbalanced_links_counter = 0;
+
+  set<Link*> all_links;
+  for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
+    Anchor * this_anchor = it->second;
+    for (list<Link*>::iterator p_link_it = this_anchor->links.begin(); p_link_it != this_anchor->links.end(); p_link_it++) {
+      Link * this_link = *p_link_it;
+      if (this_link->tags.size() > 1) {
+        std::map<std::string, uint> longest_segment;
+        std::map<std::string, uint> shortest_segment;
+        for (map<std::string, string*>::iterator p_species_it = this->species.begin(); p_species_it != this->species.end(); p_species_it++) {
+          longest_segment[p_species_it->first] = 0;
+          shortest_segment[p_species_it->first] = 0;
+        }
+//         uint longest_segment = 0;
+//         uint shortest_segment = 0;
+        for (list<tag>::iterator p_tag_it = this_link->tags.begin(); p_tag_it != this_link->tags.end(); p_tag_it++) {
+          uint length = p_tag_it->end - p_tag_it->start + 1;
+          if (length > longest_segment[*p_tag_it->species]) {
+            longest_segment[*p_tag_it->species] = length;
+          }
+          if (shortest_segment[*p_tag_it->species] == 0) {
+            shortest_segment[*p_tag_it->species] = length;
+          } else if (length < shortest_segment[*p_tag_it->species]) {
+            shortest_segment[*p_tag_it->species] = length;
+          }
+        }
+        bool all_segments_are_balanced = true;
+        for (map<std::string, string*>::iterator p_species_it = this->species.begin(); p_species_it != this->species.end(); p_species_it++) {
+          if (shortest_segment[p_species_it->first] * max_ratio < longest_segment[p_species_it->first]) {
+            all_segments_are_balanced = false;
+          }
+        }
+        if (all_segments_are_balanced) {
+          continue;
+        }
+        list<tag> tmp_tags;
+        for (list<tag>::iterator p_tag_it = this_link->tags.begin(); p_tag_it != this_link->tags.end(); p_tag_it++) {
+          uint length = p_tag_it->end - p_tag_it->start + 1;
+          if (length * max_ratio < longest_segment[*p_tag_it->species]) {
+            unbalanced_segments_counter++;
+          } else {
+            tmp_tags.push_back(*p_tag_it);
+          }
+        }
+        if (tmp_tags.size() == 0) {
+          cout << "Leaving empty link" << endl;
+          exit(1);
+        }
+        unbalanced_links_counter++;
+        this_link->tags = tmp_tags;
+      }
+    }
+  }
+  cout << "removed " << unbalanced_segments_counter << " unbalanced segments in " << unbalanced_links_counter << " blocks" << endl;
+}

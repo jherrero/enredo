@@ -27,6 +27,7 @@ public:
     void merge_alternative_paths(uint max_anchors);
     void Graph::study_anchors(void);
     void Graph::simplify(uint min_anchors = 1, uint min_regions = 1, uint min_length = 0);
+    void split_unbalanced_links(float max_ratio);
 
 protected:
     std::map<std::string, Anchor*> anchors;
