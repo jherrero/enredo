@@ -19,7 +19,7 @@ public:
     ~Graph();
     void add_Anchor(Anchor *this_anchor);
     Anchor* get_Anchor(std::string id);
-    bool populate_from_file(char *filename, float min_score, int max_gap_length);
+    bool populate_from_file(char *filename, float min_score, int max_gap_length, bool anchors_as_links);
     void minimize();
     void print_anchors_histogram(std::ostream &out = std::cout);
     void print_stats(int histogram_size);
