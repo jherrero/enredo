@@ -10,6 +10,8 @@
 
 using namespace std;
 
+bool DEBUG = true;
+
 Graph::Graph()
 {
   anchors.clear();
@@ -52,7 +54,7 @@ Anchor* Graph::get_Anchor(string id)
 /*!
     \fn Graph::populate_from_file(string filename)
  */
-bool Graph::populate_from_file(char *filename, float min_score, int max_gap_length)
+bool Graph::populate_from_file(char *filename, float min_score, int max_gap_length, bool anchors_as_links)
 {
   ifstream inputfile (filename);
   string line;
@@ -72,6 +74,9 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
   while (!inputfile.eof()) {
     getline(inputfile, line);
     if (line[0] == '#' or inputfile.eof()) {
+      continue;
+    } else if (line == "--") {
+      last_species = "";
       continue;
     }
     string this_anchor_id;
@@ -119,6 +124,10 @@ bool Graph::populate_from_file(char *filename, float min_score, int max_gap_leng
         last_chr == this_chr and
         last_end < this_start) {
       if ((max_gap_length > 0) and (this_start - last_end - 1 > max_gap_length)) {
+        if (DEBUG) {
+          cout << " ** LONG GAP **   " << this_species << ":" << this_chr << ":" << last_end << ".." <<
+              this_start << "    " << last_anchor->id << " <--> " << anchor->id << endl;
+        }
         long_gap_counter++;
       } else {
         Link *this_link = anchor->get_direct_Link(last_anchor);
@@ -172,12 +181,10 @@ void Graph::minimize()
   cout << "Minimizing graph..." << endl;
   for (std::map<std::string, Anchor*>::iterator it = anchors.begin(); it != anchors.end(); it++) {
     Anchor *this_anchor = it->second;
-//     if (it->second->id == "10_11557" or it->second->id == "9_12874") {
-//       cout << "=================== ANCHOR " << it->second->id << " ===========================" << endl;
-//       it->second->print();
-//     } else {
-//       continue;
-//     }
+    if (DEBUG and (it->second->id == "1_9496" or it->second->id == "1_9500")) {
+      cout << "=================== ANCHOR " << it->second->id << " ===========================" << endl;
+      it->second->print();
+    }
     count += this_anchor->minimize();
   }
   cout << count << " merges." << endl;
@@ -488,19 +495,13 @@ void Graph::simplify(uint min_anchors, uint min_regions, uint min_length)
     }
     for (list<Link*>::iterator p_back_link_it = back_anchor->links.begin(); p_back_link_it != back_anchor->links.end(); p_back_link_it++) {
       Link *this_link = *p_back_link_it;
-      if (this_link != *p_link_it and this_link->tags.size() < (*p_link_it)->tags.size()) {
+      if (this_link != *p_link_it and this_link->tags.size() < (*p_link_it)->tags.size() and this_link->tags.size() >= min_regions) {
         back_links.insert(this_link);
       }
     }
-    // test empty front or back links (or just 1?)
-    if (front_links.size() == 0 or back_links.size() == 0) {
-      continue;
-    }
-    // TODO spot matches front -- partial tested -- back
-    bool split = false;
-    do {
-/*      cout << "------------------------------------" << endl;
-      cout << "Simplifying ";
+    if (DEBUG and (front_anchor->id == "1_12711" or back_anchor->id == "1_12711")) {
+      cout << "------------------------------------" << endl;
+      cout << "+++Simplifying ";
       (*p_link_it)->print();
       cout << "Front links:" << endl;
       for (std::set<Link*>::iterator p_front_it = front_links.begin(); p_front_it != front_links.end(); p_front_it++) {
@@ -510,7 +511,29 @@ void Graph::simplify(uint min_anchors, uint min_regions, uint min_length)
       for (std::set<Link*>::iterator p_back_it = back_links.begin(); p_back_it != back_links.end(); p_back_it++) {
         (*p_back_it)->print();
       }
-      cout << "------------------------------------" << endl;*/
+      cout << "------------------------------------" << endl;
+    }
+    // test empty front or back links (or just 1?)
+    if (front_links.size() == 0 or back_links.size() == 0) {
+      continue;
+    }
+    // TODO spot matches front -- partial tested -- back
+    bool split = false;
+    do {
+      if (DEBUG) {
+        cout << "------------------------------------" << endl;
+        cout << "Simplifying ";
+        (*p_link_it)->print();
+        cout << "Front links:" << endl;
+        for (std::set<Link*>::iterator p_front_it = front_links.begin(); p_front_it != front_links.end(); p_front_it++) {
+          (*p_front_it)->print();
+        }
+        cout << "Back links:" << endl;
+        for (std::set<Link*>::iterator p_back_it = back_links.begin(); p_back_it != back_links.end(); p_back_it++) {
+          (*p_back_it)->print();
+        }
+        cout << "------------------------------------" << endl;
+      }
       split = false;
       for (std::set<Link*>::iterator p_back_it = back_links.begin(); 
            !split and (p_back_it != back_links.end()); p_back_it++) {
@@ -568,23 +591,23 @@ void Graph::simplify(uint min_anchors, uint min_regions, uint min_length)
               should_be_simplified = false;
   //             continue;
             }
-/*            if (this_tag_links_to_front[i] != front_link->tags.end()) {
-              print_tag(*this_tag_links_to_front[i]);
-            } else {
-              cout << " ------------------- ";
-            }
-            cout << " :: ";
-            print_tag(*(p_center_tag_it++));
-            cout << " :: ";
-            if (this_tag_links_to_back[i] != back_link->tags.end()) {
-              print_tag(*this_tag_links_to_back[i]);
-            } else {
-              cout << " ------------------- ";
-            }
-            cout << endl;*/
+//             if (this_tag_links_to_front[i] != front_link->tags.end()) {
+//               print_tag(*this_tag_links_to_front[i]);
+//             } else {
+//               cout << " ------------------- ";
+//             }
+//             cout << " :: ";
+//             print_tag(*(p_center_tag_it++));
+//             cout << " :: ";
+//             if (this_tag_links_to_back[i] != back_link->tags.end()) {
+//               print_tag(*this_tag_links_to_back[i]);
+//             } else {
+//               cout << " ------------------- ";
+//             }
+//             cout << endl;
           }
 //           cout << " ==> " << number_of_matches << " (" << should_be_simplified << ")" << endl;
-          if (should_be_simplified and number_of_matches >= min_regions and number_of_matches < this_tag_links_to_front.size()) {
+          if (should_be_simplified and number_of_matches < this_tag_links_to_front.size()) {
             // Split this link. A posterior loop of minimization will take care of joining the edges
             split_count++;
             Link* new_link = new Link(*p_link_it);
@@ -603,8 +626,8 @@ void Graph::simplify(uint min_anchors, uint min_regions, uint min_length)
               exit(1);
             }
             (*p_link_it)->tags = tmp_tags;
-//             new_link->print();
-//             (*p_link_it)->print();
+            new_link->print();
+            (*p_link_it)->print();
             new_link->anchor_list.front()->add_Link(new_link);
             new_link->anchor_list.back()->add_Link(new_link);
             split = true;
