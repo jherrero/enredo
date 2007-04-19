@@ -20,16 +20,17 @@ int main(int argc, char *argv[])
   char *input_filename = NULL;
   char *output_filename = NULL;
   uint max_gap_length = 100000;
+  bool anchors_as_links = false;
   float min_score = 0.0f;
   uint min_length = 100000;
   uint min_regions = 2;
   uint min_anchors = 3;
   float max_ratio = 0.0f;
   uint path_dissimilarity = 0;
-  bool simplify_graph = false;
+  uint simplify_graph = 0;
   int histogram_size = 10;
   bool print_all = false;
-  bool print_stats = true;
+  bool print_stats = false;
   bool help = false;
   bool ret;
   string this_arg;
@@ -39,14 +40,17 @@ int main(int argc, char *argv[])
     if ((this_arg == "--max-gap-length") and (a < argc - 1)) {
       a++;
       max_gap_length = atoi(argv[a]);
+    } else if ((this_arg == "--anchors-as-links")) {
+      anchors_as_links = true;
     } else if ((this_arg == "--min-score") and (a < argc - 1)) {
       a++;
       min_score = atof(argv[a]);
     } else if ((this_arg == "--max-path-dissimilarity") and (a < argc - 1)) {
       a++;
       path_dissimilarity = atoi(argv[a]);
-    } else if ((this_arg == "--simplify-graph")) {
-      simplify_graph = true;
+    } else if ((this_arg == "--simplify-graph") and (a < argc - 1)) {
+      a++;
+      simplify_graph = atoi(argv[a]);
     } else if ((this_arg == "--min-length") and (a < argc - 1)) {
       a++;
       min_length = atoi(argv[a]);
@@ -66,6 +70,8 @@ int main(int argc, char *argv[])
       histogram_size = atoi(argv[a]);
     } else if (this_arg == "--no-stats") {
       print_stats = false;
+    } else if (this_arg == "--stats") {
+      print_stats = true;
     } else if (((this_arg == "--output-file") or (this_arg == "--output") or (this_arg == "-o"))and (a < argc - 1)) {
       a++;
       output_filename  = argv[a];
@@ -101,13 +107,14 @@ int main(int argc, char *argv[])
     cout << "max-ratio: off" << endl;
   }
   cout
-      << "simplify-graph: " << (simplify_graph?"yes":"no") << endl
+//       << "simplify-graph: " << (simplify_graph?"yes":"no") << endl
+      << "simplify-graph: " << simplify_graph << endl
       << "print-all: " << (print_all?"yes":"no") << endl;
 
   cout << endl
       << " Reading input file:" << endl
       << "====================================" << endl;
-  ret = my_graph.populate_from_file(input_filename, min_score, max_gap_length);
+  ret = my_graph.populate_from_file(input_filename, min_score, max_gap_length, anchors_as_links);
   if (!ret) {
     cerr << "EXIT (Error while reading file)" << endl;
     exit(1);
@@ -138,9 +145,22 @@ int main(int argc, char *argv[])
   }
 
 //   my_graph.study_anchors();
-  if (simplify_graph) {
-    my_graph.simplify(min_anchors, min_regions, min_length);
+  if (simplify_graph > 0) {
+    if (simplify_graph > 1) {
+      my_graph.simplify(min_anchors, 1, min_length);
+    } else {
+      my_graph.simplify(min_anchors, min_regions, min_length);
+    }
     my_graph.minimize();
+    if (simplify_graph == 3) {
+      my_graph.merge_alternative_paths(path_dissimilarity);
+      my_graph.minimize();
+    } else if (simplify_graph == 4) {
+      for (uint a = 0; a < path_dissimilarity; a++) {
+        my_graph.merge_alternative_paths(a + 1);
+        my_graph.minimize();
+      }
+    }
     if (print_stats) {
       cout << endl
           << " Stats after simplifying the Graph:" << endl
@@ -152,12 +172,9 @@ int main(int argc, char *argv[])
   if (max_ratio > 1.0f) {
     my_graph.split_unbalanced_links(max_ratio);
     my_graph.minimize();
-    my_graph.print_stats(histogram_size);
-  }
-  if (print_all) {
-    min_length = 1;
-    min_regions = 1;
-    min_anchors = 1;
+    if (print_stats) {
+      my_graph.print_stats(histogram_size);
+    }
   }
 
   cout << endl
@@ -188,13 +205,22 @@ int main(int argc, char *argv[])
       output_stream << "# max-ratio: off" << endl;
     }
     output_stream 
-        << "# simplify-graph: " << (simplify_graph?"yes":"no") << endl
+//         << "# simplify-graph: " << (simplify_graph?"yes":"no") << endl
+        << "# simplify-graph: " << simplify_graph << endl
         << "# print-all: " << (print_all?"yes":"no") << endl
         << endl;
-    num_of_blocks = my_graph.print_links(output_stream, min_anchors, min_regions, min_length);
+    if (print_all) {
+      num_of_blocks = my_graph.print_links(output_stream);
+    } else {
+      num_of_blocks = my_graph.print_links(output_stream, min_anchors, min_regions, min_length);
+    }
     output_stream.close();
   } else {
-    num_of_blocks = my_graph.print_links(cout, min_anchors, min_regions, min_length);
+    if (print_all) {
+      num_of_blocks = my_graph.print_links(cout);
+    } else {
+      num_of_blocks = my_graph.print_links(cout, min_anchors, min_regions, min_length);
+    }
   }
   cout << " Got " << num_of_blocks << " blocks." << endl;
 
