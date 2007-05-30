@@ -23,33 +23,52 @@ OPTIONS:
  --compara NAME [default: Multi]
  --db_url mysql://user:pass@host:port/compara_db_name
  --method_link_type TYPE [default: ENREDO]
+ --name method_link_species_set.name [default: derived from
+      the species names and the method_link_type]
+ --source method_link_species_set.source [default: ensembl]
+ --url method_link_species_set.url [default: -empty-]
  --force_strand [default: -disabled-]
  --help [default: -disabled-]
 
-* reg_url: uses a URL to auto-load the registry
-* compara: name of the database in the Registry (should be compara)
+* reg_url: uses a URL to auto-load the registry (needed to connect to the
+    core databases)
+* compara: name of the database in the Registry (should be Multi or compara)
 * db_url: alternatively you can use this way to define the compara
     database you want to use to store the results
 * method_link_type: method_link_type for the new data
+* name: the name for the new MethodLinkSpeciesSet entry. A name will
+    be automatically created from the name of the species and the
+    method_link_type if none is provided
+* source: the source for the new MethodLinkSpeciesSet entry. Default values
+    is "ensembl".
+* url: the URL for the new MethodLinkSpeciesSet entry. Default value is
+    empty.
 * force_strand: palindromic segments may have an undefined
     strand. This option sets these strands to 1 (you should probably avoid
     this option and use the EstimateStrand.pl script instead)
 * help: show this help message
 
 EXAMPLE:
-  perl store_output.pl -db_url mysql://user:pass@compara1/my_compara_db -i enredo.out
+  perl store_output.pl --reg_url mysql://user@ens-livemirror \
+      --db_url mysql://user:pass@compara1/my_compara_db -i enredo.out
 ';
 
 my $reg_url;
 my $db_url;
 my $compara = "Multi";
 my $method_link_type = "ENREDO";
+my $name = undef;
+my $source = "ensembl";
+my $url = "";
 my $input_file;
 my $force_strand = 0;
 my $help = 0;
 
 GetOptions(
     "method_link_type=s" => \$method_link_type,
+    "name=s" => \$name,
+    "source=s" => \$name,
+    "url=s" => \$name,
     "reg_url=s" => \$reg_url,
     "compara=s" => \$compara,
     "db_url=s" => \$db_url,
@@ -92,19 +111,30 @@ if ($db_url =~ /mysql\:\/\/([^\@]+\@)?([^\:\/]+)(\:\d+)?(\/\w+)?/) {
 
 my ($all_synteny_regions, $genome_dbs) = parse_file($input_file);
 
-print "#Enredo parser\n";
+print "## Enredo parser\n";
 print "# Found ", scalar(@$all_synteny_regions), " blocks\n";
 
 my $method_link_species_set_adaptor = $reg->get_adaptor(
     $compara, "compara", "MethodLinkSpeciesSet");
+if (!$name) {
+  $name = join("-", map {$_->name =~ /(.)\S+\s(.{3})/; $1.".".$2} values %$genome_dbs).
+      " ".lc($method_link_type);
+}
 my $method_link_species_set = Bio::EnsEMBL::Compara::MethodLinkSpeciesSet->new(
         -method_link_type => $method_link_type,
         -species_set => [values %$genome_dbs],
+        -method_link_class => "SyntenyRegion.synteny",
+        -name => $name,
+        -source => $source,
+        -url => $url,
     );
 $method_link_species_set = $method_link_species_set_adaptor->store($method_link_species_set);
 print "# Method link type: ", $method_link_species_set->method_link_type, "\n";
 print "# GenomeDBs: ", join (" -- ", map {$_->name} @{$method_link_species_set->species_set}), "\n";
 print "# Method link species set ID: ", $method_link_species_set->dbID, "\n";
+print "# Method link species set name: ", $method_link_species_set->name, "\n";
+print "# Method link species set source: ", $method_link_species_set->source, "\n";
+print "# Method link species set URL: ", $method_link_species_set->url, "\n";
 
 my $synteny_region_adaptor = $reg->get_adaptor(
     $compara, "compara", "SyntenyRegion");
