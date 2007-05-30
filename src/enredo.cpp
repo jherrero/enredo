@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
   bool help = false;
   bool ret;
   string this_arg;
+  string debug = "";
 
   for (int a = 1; a < argc; a++) {
     this_arg = argv[a];
@@ -75,6 +76,9 @@ int main(int argc, char *argv[])
     } else if (((this_arg == "--output-file") or (this_arg == "--output") or (this_arg == "-o"))and (a < argc - 1)) {
       a++;
       output_filename  = argv[a];
+    } else if ((this_arg == "--debug") and (a < argc - 1)) {
+      a++;
+      debug  = argv[a];
     } else if ((this_arg == "--help") or (this_arg == "-h")) {
       help = true;
     } else if (!input_filename) {
@@ -131,10 +135,10 @@ int main(int argc, char *argv[])
     my_graph.print_stats(histogram_size);
   }
 
-  my_graph.minimize();
+  my_graph.minimize(debug);
   for (uint a = 0; a < path_dissimilarity; a++) {
-    my_graph.merge_alternative_paths(a + 1);
-    my_graph.minimize();
+    my_graph.merge_alternative_paths(a + 1, debug);
+    my_graph.minimize(debug);
   }
 
   if (print_stats) {
@@ -147,18 +151,18 @@ int main(int argc, char *argv[])
 //   my_graph.study_anchors();
   if (simplify_graph > 0) {
     if (simplify_graph > 1) {
-      my_graph.simplify(min_anchors, 1, min_length);
+      my_graph.simplify(min_anchors, 1, min_length, debug);
     } else {
-      my_graph.simplify(min_anchors, min_regions, min_length);
+      my_graph.simplify(min_anchors, min_regions, min_length, debug);
     }
-    my_graph.minimize();
+    my_graph.minimize(debug);
     if (simplify_graph == 3) {
-      my_graph.merge_alternative_paths(path_dissimilarity);
-      my_graph.minimize();
+      my_graph.merge_alternative_paths(path_dissimilarity, debug);
+      my_graph.minimize(debug);
     } else if (simplify_graph == 4) {
       for (uint a = 0; a < path_dissimilarity; a++) {
-        my_graph.merge_alternative_paths(a + 1);
-        my_graph.minimize();
+        my_graph.merge_alternative_paths(a + 1, debug);
+        my_graph.minimize(debug);
       }
     }
     if (print_stats) {
@@ -170,8 +174,8 @@ int main(int argc, char *argv[])
 //     my_graph.study_anchors();
   }
   if (max_ratio > 1.0f) {
-    my_graph.split_unbalanced_links(max_ratio);
-    my_graph.minimize();
+    my_graph.split_unbalanced_links(max_ratio, debug);
+    my_graph.minimize(debug);
     if (print_stats) {
       my_graph.print_stats(histogram_size);
     }

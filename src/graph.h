@@ -20,14 +20,14 @@ public:
     void add_Anchor(Anchor *this_anchor);
     Anchor* get_Anchor(std::string id);
     bool populate_from_file(char *filename, float min_score, int max_gap_length, bool anchors_as_links);
-    void minimize();
+    void minimize(std::string debug = "");
     void print_anchors_histogram(std::ostream &out = std::cout);
     void print_stats(int histogram_size);
     unsigned long int print_links(std::ostream &out = std::cout, uint min_anchors = 1, uint min_regions = 1, uint min_length = 0);
-    void merge_alternative_paths(uint max_anchors);
+    void merge_alternative_paths(uint max_anchors, std::string debug = "");
     void Graph::study_anchors(void);
-    void Graph::simplify(uint min_anchors = 1, uint min_regions = 1, uint min_length = 0);
-    void split_unbalanced_links(float max_ratio);
+    void Graph::simplify(uint min_anchors = 1, uint min_regions = 1, uint min_length = 0, std::string debug = "");
+    void split_unbalanced_links(float max_ratio, std::string debug = "");
 
 protected:
     std::map<std::string, Anchor*> anchors;
