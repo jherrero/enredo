@@ -89,12 +89,20 @@ int main(int argc, char *argv[])
     }
   }
 
+  cout << "Enredo v" << VERSION << endl;
+  cout << endl
+      << " Command line:" << endl
+      << "====================================" << endl;
+  for (int a = 0; a < argc; a++) {
+    cout << " " << argv[a];
+  }
+  cout << endl;
+
   if (help or !input_filename) {
     print_help();
     exit(0);
   }
 
-  cout << "Enredo v" << VERSION << endl;
   cout << endl
       << " Parameters:" << endl
       << "====================================" << endl
@@ -150,16 +158,28 @@ int main(int argc, char *argv[])
 
 //   my_graph.study_anchors();
   if (simplify_graph > 0) {
-    if (simplify_graph > 1) {
+    if (simplify_graph > 4) {
+      while (my_graph.simplify(min_anchors, 1, min_length, debug)) {
+        my_graph.minimize(debug);
+      }
+      if (simplify_graph > 5) {
+        while (my_graph.simplify_aggressive(min_anchors, min_regions, min_length, debug)) {
+          my_graph.minimize(debug);
+          my_graph.simplify(min_anchors, 1, min_length, debug);
+          my_graph.minimize(debug);
+        }
+      }
+    } else if (simplify_graph > 1) {
       my_graph.simplify(min_anchors, 1, min_length, debug);
+      my_graph.minimize(debug);
     } else {
       my_graph.simplify(min_anchors, min_regions, min_length, debug);
+      my_graph.minimize(debug);
     }
-    my_graph.minimize(debug);
     if (simplify_graph == 3) {
       my_graph.merge_alternative_paths(path_dissimilarity, debug);
       my_graph.minimize(debug);
-    } else if (simplify_graph == 4) {
+    } else if (simplify_graph > 3) {
       for (uint a = 0; a < path_dissimilarity; a++) {
         my_graph.merge_alternative_paths(a + 1, debug);
         my_graph.minimize(debug);
@@ -245,7 +265,8 @@ void print_help(void)
       << " --max-path-dissimilarity: merge alternative paths in the graph if their" << endl
       << "       dissimilarity is up to this threshold (def: 0)" << endl
       << " --simplify-graph: try to split small edges in order to lengthen" << endl
-      << "       other syntenic blocks (def. false)" << endl
+      << "       other syntenic blocks. Ranges from 0 (none) to 6 (more aggressive)." << endl
+      << "       (def: 0)" << endl
       << endl
       << " --min-length: minimum length of final syntenic block (def: 100000)" << endl
       << " --min-regions: minimum number of region in the syntenic block (def: 2)" << endl
