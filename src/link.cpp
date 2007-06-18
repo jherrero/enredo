@@ -4,6 +4,7 @@
 #include <vector>
 #include <map>
 #include <cstdlib>
+#include <iomanip>
 
 Link::Link(Anchor* anchor1, Anchor* anchor2)
 {
@@ -46,9 +47,9 @@ void Link::add_tag(string *species, string *chr, int start, int end, short stran
 
 
 /*!
-    \fn Link::get_matching_tags(Link *other_link, short strand1, short strand2)
+    \fn Link::get_matching_tags(Link *other_link, short strand1, short strand2, bool allow_partial_match)
  */
-std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link, short strand1, short strand2)
+std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link, short strand1, short strand2, bool allow_partial_match)
 {
   std::vector< std::list<tag>::iterator > this_tag_links_to(this->tags.size(), other_link->tags.end());
   std::vector< std::list<tag>::iterator > other_tag_links_to(other_link->tags.size(), this->tags.end());
@@ -70,10 +71,12 @@ std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link
   }
 
   uint this_tag_counter = 0;
+  // p_tag1: iterator for tags in this link
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
     this_tag_counter++;
     short str1 = strand1 * p_tag1->strand;
     uint other_tag_counter = 0;
+    // p_tag2: iterator for tags in the other link
     for (list<tag>::iterator p_tag2 = other_link->tags.begin(); p_tag2 != other_link->tags.end(); p_tag2++) {
       other_tag_counter++;
       if (p_tag1->species == p_tag2->species and p_tag1->chr == p_tag2->chr and p_tag1->start < p_tag2->end and p_tag2->start < p_tag1->end) {
@@ -106,6 +109,7 @@ std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link
   for (uint a = 0; a < other_tag_links_to.size(); a++) {
     // Check if any of the other tags has not been linked
     if (other_tag_links_to[a] == this->tags.end()) {
+      if (allow_partial_match) continue;
       this_tag_links_to.clear();
       return this_tag_links_to;
     }
@@ -267,9 +271,9 @@ void Link::print(ostream &out)
  */
 void print_tag(tag this_tag, ostream &out)
 {
-  out << *this_tag.species << ":" << *this_tag.chr << ":"
-      << this_tag.start << ":" << this_tag.end
-      << " [" << this_tag.strand << "] l=" << (this_tag.end - this_tag.start + 1);
+  out << *this_tag.species << ":" << setw(3) << *this_tag.chr << ":"
+      << setw(9) << this_tag.start << ":" << setw(9) << this_tag.end
+      << " [" << setw(2) << this_tag.strand << "] l=" << setw(6) << (this_tag.end - this_tag.start + 1);
 }
 
 
@@ -450,3 +454,100 @@ uint Link::get_num_of_mismatches(Link* other_link)
 }
 
 
+/*!
+    \fn Link::split(vector<bool> tags_to_split)
+ */
+Link* Link::split(vector<bool> tags_to_split)
+{
+  // Check that bool vector size matches the num of tags in this link
+  if (tags_to_split.size() != this->tags.size()) {
+    cerr << "Trying to split a link with " << this->tags.size() << " tags using a bool vector"
+        << " containing only " << tags_to_split.size() << " values." << endl;
+    return NULL;
+  }
+
+  Link* new_link = new Link(this);
+
+  std::list<tag>::iterator p_tag_it = this->tags.begin();
+  list<tag> tmp_tags;
+  for (uint i=0; i < tags_to_split.size(); i++) {
+    if (tags_to_split[i]) {
+      new_link->tags.push_back(*p_tag_it);
+    } else {
+      tmp_tags.push_back(*p_tag_it);
+    }
+    p_tag_it++;
+  }
+
+  if (tmp_tags.size() == 0) {
+    cerr << "Leaving empty link" << endl;
+    exit(1);
+  }
+  this->tags = tmp_tags;
+  new_link->anchor_list.front()->add_Link(new_link);
+  if (new_link->anchor_list.front() != new_link->anchor_list.back()) {
+    new_link->anchor_list.back()->add_Link(new_link);
+  }
+
+  return new_link;
+}
+
+
+/*!
+    \fn Link::split(std::vector< std::list<tag>::iterator > tags_to_split)
+ */
+Link* Link::split(std::vector< std::list<tag>::iterator > tags_to_split)
+{
+  Link* new_link = new Link(this);
+
+  std::list<tag>::iterator p_tag_it = this->tags.begin();
+  list<tag> tmp_tags;
+  for (uint i=0; i < this->tags.size(); i++) {
+    bool tag_found = false;
+    for (uint j=0; j < tags_to_split.size(); j++) {
+      if (p_tag_it == tags_to_split[j]) {
+        new_link->tags.push_back(*p_tag_it);
+        tag_found = true;
+        break;
+      }
+    }
+    if (!tag_found) {
+      tmp_tags.push_back(*p_tag_it);
+    }
+    p_tag_it++;
+  }
+
+  if (new_link->tags.size() != tags_to_split.size()) {
+    cerr << "Couldn't assign all the tags" << endl;
+    exit(1);
+  }
+  if (tmp_tags.size() == 0) {
+    cerr << "Leaving empty link" << endl;
+    exit(1);
+  }
+  this->tags = tmp_tags;
+  new_link->anchor_list.front()->add_Link(new_link);
+  if (new_link->anchor_list.front() != new_link->anchor_list.back()) {
+    new_link->anchor_list.back()->add_Link(new_link);
+  }
+
+  return new_link;
+}
+
+
+/*!
+    \fn Link::get_strand_for_matching_tags(Anchor* anchor)
+ */
+short Link::get_strand_for_matching_tags(Anchor* anchor)
+{
+  short strand;
+  if (this->anchor_list.front() == this->anchor_list.back()) {
+    // Cannot determine the strand. Use 0 which will try both strands
+    strand = 0;
+  } else if (this->anchor_list.back() == anchor) {
+    strand = -1;
+  } else if (this->anchor_list.front() == anchor) {
+    strand = 1;
+  }
+  return strand;
+}

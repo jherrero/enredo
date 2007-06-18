@@ -37,7 +37,11 @@ public:
     uint get_shortest_length();
     bool is_an_alternative_path_of(Link* other_link);
     uint get_num_of_mismatches(Link* other_link);
-    std::vector< std::list<tag>::iterator > get_matching_tags(Link *other_link, short strand1 = 0, short strand2 = 0);
+    std::vector< std::list<tag>::iterator > get_matching_tags(Link *other_link, short strand1 = 0, short strand2 = 0,
+                                                             bool allow_partial_match = false);
+    Link* split(vector<bool> tags_to_split);
+    Link* split(std::vector< std::list<tag>::iterator > tags_to_split);
+    short get_strand_for_matching_tags(Anchor* anchor);
 
     list<Anchor*> anchor_list;
 
