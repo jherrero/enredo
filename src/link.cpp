@@ -271,9 +271,9 @@ void Link::print(ostream &out)
  */
 void print_tag(tag this_tag, ostream &out)
 {
-  out << *this_tag.species << ":" << setw(3) << *this_tag.chr << ":"
-      << setw(9) << this_tag.start << ":" << setw(9) << this_tag.end
-      << " [" << setw(2) << this_tag.strand << "] l=" << setw(6) << (this_tag.end - this_tag.start + 1);
+  out << *this_tag.species << ":" << *this_tag.chr << ":"
+      << this_tag.start << ":" << this_tag.end
+      << " [" << this_tag.strand << "] l=" << (this_tag.end - this_tag.start + 1);
 }
 
 
