@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
 
   my_graph.minimize(debug);
   for (uint a = 0; a < path_dissimilarity; a++) {
-    my_graph.merge_alternative_paths(a + 1, debug);
+    my_graph.merge_alternative_paths(a + 1, 10000, debug);
     my_graph.minimize(debug);
   }
 
@@ -169,6 +169,14 @@ int main(int argc, char *argv[])
           my_graph.minimize(debug);
         }
       }
+      if (simplify_graph > 6) {
+        my_graph.split_unselected_links(min_anchors, min_regions, min_length, debug);
+        my_graph.minimize(debug);
+        my_graph.simplify(min_anchors, 1, min_length, debug);
+        my_graph.minimize(debug);
+        my_graph.simplify_aggressive(min_anchors, 1, min_length, debug);
+        my_graph.minimize(debug);
+      }
     } else if (simplify_graph > 1) {
       my_graph.simplify(min_anchors, 1, min_length, debug);
       my_graph.minimize(debug);
@@ -176,12 +184,20 @@ int main(int argc, char *argv[])
       my_graph.simplify(min_anchors, min_regions, min_length, debug);
       my_graph.minimize(debug);
     }
-    if (simplify_graph == 3) {
-      my_graph.merge_alternative_paths(path_dissimilarity, debug);
+    if (simplify_graph == 3 and path_dissimilarity > 0) {
+      my_graph.merge_alternative_paths(path_dissimilarity, 10000, debug);
+      my_graph.minimize(debug);
+    } else if (simplify_graph > 6) {
+      my_graph.resolve_small_palindromes(min_anchors, min_regions, min_length, debug);
+      my_graph.assimilate_small_insertions(min_anchors, min_regions, min_length, 100000, debug);
+      while (my_graph.merge_alternative_paths(0, 10000, debug)) {
+        my_graph.minimize(debug);
+      }
+      my_graph.assimilate_small_insertions(min_anchors, min_regions, min_length, 100000, debug);
       my_graph.minimize(debug);
     } else if (simplify_graph > 3) {
       for (uint a = 0; a < path_dissimilarity; a++) {
-        my_graph.merge_alternative_paths(a + 1, debug);
+        my_graph.merge_alternative_paths(a + 1, 10000, debug);
         my_graph.minimize(debug);
       }
     }

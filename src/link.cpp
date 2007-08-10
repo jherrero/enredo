@@ -27,6 +27,20 @@ Link::Link(Link *my_link)
 
 Link::~Link()
 {
+  for (list<Link*>::iterator p_link_it = this->anchor_list.front()->links.begin(); p_link_it != this->anchor_list.front()->links.end(); p_link_it++) {
+    if (*p_link_it == this) {
+      this->anchor_list.front()->links.erase(p_link_it);
+      break;
+    }
+  }
+  for (list<Link*>::iterator p_link_it = this->anchor_list.back()->links.begin(); p_link_it != this->anchor_list.back()->links.end(); p_link_it++) {
+    if (*p_link_it == this) {
+      this->anchor_list.back()->links.erase(p_link_it);
+      break;
+    }
+  }
+  this->tags.clear();
+  this->anchor_list.clear();
 }
 
 
@@ -79,6 +93,9 @@ std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link
     // p_tag2: iterator for tags in the other link
     for (list<tag>::iterator p_tag2 = other_link->tags.begin(); p_tag2 != other_link->tags.end(); p_tag2++) {
       other_tag_counter++;
+      if (this == other_link and p_tag1 == p_tag2) {
+        continue;
+      }
       if (p_tag1->species == p_tag2->species and p_tag1->chr == p_tag2->chr and p_tag1->start < p_tag2->end and p_tag2->start < p_tag1->end) {
         short str2 = strand2 * p_tag2->strand;
         if (str1 == 1 and str2 == 1) {
@@ -166,6 +183,34 @@ bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand
     other_link->reverse();
   }
 
+  Anchor *front_anchor = this->anchor_list.front();
+  Anchor *middle_anchor = this->anchor_list.back();
+  Anchor *back_anchor = other_link->anchor_list.back();
+  if (middle_anchor != other_link->anchor_list.front()) {
+    cerr << "Problem here (6)" << endl;
+    exit(6);
+  }
+
+  // Check if the resulting link will be palindromic
+  bool resulting_link_is_palindromic = false;
+  if (front_anchor == back_anchor and this->anchor_list.size() == other_link->anchor_list.size()) {
+    resulting_link_is_palindromic = true;
+    list<Anchor*>::iterator p_anchor1 = this->anchor_list.begin();
+    list<Anchor*>::reverse_iterator p_anchor2 = other_link->anchor_list.rbegin();
+    // Skip the first one, we know they mathc already
+    p_anchor1++;
+    p_anchor2++;
+    for ( ; p_anchor1 != this->anchor_list.end(); p_anchor1++) {
+      string id1 = (*p_anchor1)->id;
+      string id2 = (*p_anchor2)->id;
+      if (id1 != id2) {
+        resulting_link_is_palindromic = false;
+        break;
+      }
+      p_anchor2++;
+    }
+  }
+
   // Concatenate the links
   uint this_tag_counter = 0;
   for (list<tag>::iterator p_tag1 = this->tags.begin(); p_tag1 != this->tags.end(); p_tag1++) {
@@ -176,25 +221,21 @@ bool Link::try_to_concatenate_with(Link *other_link, short strand1, short strand
 //         << p_tag2->end << ":" << p_tag2->strand << ")";
     if (p_tag1->strand != 0 and p_tag1->strand == -p_tag2->strand) {
       cerr << "Problem here (5)" << endl;
-    } else if (p_tag1->strand == 1 or p_tag2->strand == 1) {
+    }
+    if (p_tag1->end < p_tag2->end) {
       p_tag1->end = p_tag2->end;
-    } else if (p_tag1->strand == -1 or p_tag2->strand == -1) {
+    }
+    if (p_tag1->start > p_tag2->start) {
       p_tag1->start = p_tag2->start;
     }
-    if (p_tag1->strand == 0 ) {
+    if (resulting_link_is_palindromic) {
+      p_tag1->strand = 0;
+    } else if (p_tag1->strand == 0 ) {
       p_tag1->strand = p_tag2->strand;
     }
 //     cout << " => (" << *p_tag1->species << ":" << *p_tag1->chr << ":" << p_tag1->start << ":"
 //         << p_tag1->end << ":" << p_tag1->strand << ")" << endl;
     this_tag_counter++;
-  }
-
-  Anchor *front_anchor = this->anchor_list.front();
-  Anchor *middle_anchor = this->anchor_list.back();
-  Anchor *back_anchor = other_link->anchor_list.back();
-  if (middle_anchor != other_link->anchor_list.front()) {
-    cerr << "Problem here (6)" << endl;
-    exit(6);
   }
 
   // Delete other link from middle and back anchors
@@ -278,19 +319,36 @@ void print_tag(tag this_tag, ostream &out)
 
 
 /*!
-    \fn Link::get_shortest_length()
+    \fn Link::get_shortest_region_length()
  */
-uint Link::get_shortest_length()
+uint Link::get_shortest_region_length()
 {
   list<tag>::iterator p_tag = this->tags.begin();
-  uint shortest_length = p_tag->end - p_tag->start + 1;
+  uint shortest_region_length = p_tag->end - p_tag->start + 1;
   for (p_tag++; p_tag != this->tags.end(); p_tag++) {
     uint length = p_tag->end - p_tag->start + 1;
-    if (length < shortest_length) {
-      shortest_length = length;
+    if (length < shortest_region_length) {
+      shortest_region_length = length;
     }
   }
-  return shortest_length;
+  return shortest_region_length;
+}
+
+
+/*!
+    \fn Link::get_longest_region_length()
+ */
+uint Link::get_longest_region_length()
+{
+  list<tag>::iterator p_tag = this->tags.begin();
+  uint longest_region_length = p_tag->end - p_tag->start + 1;
+  for (p_tag++; p_tag != this->tags.end(); p_tag++) {
+    uint length = p_tag->end - p_tag->start + 1;
+    if (length > longest_region_length) {
+      longest_region_length = length;
+    }
+  }
+  return longest_region_length;
 }
 
 
@@ -356,22 +414,9 @@ Link* Link::merge(Link* other_link)
     }
   }
   this->tags.splice(this->tags.end(), other_link->tags);
-//   cout << " --> this:" <<endl;
-//   this->print();
-//   other_link->print();
-  for (list<Link*>::iterator p_link_it = other_link->anchor_list.front()->links.begin(); p_link_it != other_link->anchor_list.front()->links.end(); p_link_it++) {
-    if (*p_link_it == other_link) {
-      other_link->anchor_list.front()->links.erase(p_link_it);
-      break;
-    }
-  }
-  for (list<Link*>::iterator p_link_it = other_link->anchor_list.back()->links.begin(); p_link_it != other_link->anchor_list.back()->links.end(); p_link_it++) {
-    if (*p_link_it == other_link) {
-      other_link->anchor_list.back()->links.erase(p_link_it);
-      break;
-    }
-  }
+  // other_link must be delete as the 
   delete(other_link);
+
   return this;
 }
 
@@ -550,4 +595,17 @@ short Link::get_strand_for_matching_tags(Anchor* anchor)
     strand = 1;
   }
   return strand;
+}
+
+
+/*!
+    \fn Link::is_valid(uint min_anchors, uint min_regions, uint min_length)
+ */
+bool Link::is_valid(uint min_anchors, uint min_regions, uint min_length)
+{
+  if (this->anchor_list.size() >= min_anchors and this->tags.size() >= min_regions
+      and this->get_shortest_region_length() >= min_length) {
+    return true;
+  }
+  return false;
 }

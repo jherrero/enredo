@@ -14,6 +14,10 @@ Anchor::~Anchor()
 
 /*!
     \fn Anchor::get_direct_Link(Anchor *other_anchor)
+    This function looks for the Link in the set of existing ones.
+    If it does not exist yet, it will create it.
+    @param Anchor the other Anchor object
+    @return a pointer to the Link object between this and the other Anchor
  */
 Link* Anchor::get_direct_Link(Anchor *other_anchor)
 {
@@ -50,7 +54,7 @@ Link* Anchor::get_direct_Link(Anchor *other_anchor)
 /*!
     \fn Graph::minimize_anchor(Anchor* this_anchor)
  */
-uint Anchor::minimize(void)
+uint Anchor::minimize(bool debug)
 {
   uint count = 0;
   bool merge_event;
@@ -78,6 +82,10 @@ uint Anchor::minimize(void)
           strand2 = 1;
         }
         if ((*p_link1)->try_to_concatenate_with(*p_link2, strand1, strand2)) {
+          if (debug) {
+            cout << "Concatenated link: " << endl;
+            (*p_link1)->print();
+          }
           merge_event = true;
           count++;
         }
@@ -91,6 +99,7 @@ uint Anchor::minimize(void)
 
 /*!
     \fn Anchor::add_Link(Link *link)
+    Add a new Link at the end of the Anchor.links list
  */
 void Anchor::add_Link(Link *link)
 {

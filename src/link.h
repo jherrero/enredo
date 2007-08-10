@@ -13,6 +13,8 @@ using namespace std;
 
 typedef class Anchor Anchor;
 
+//! A tag in a Link represents a genomic region which goes through the path of the Link
+
 struct tag {
   string *species;
   string *chr;
@@ -22,6 +24,8 @@ struct tag {
                 // and -1 when start => end corresponds to anchor_list.back() => anchor_list.front()
 };
     void print_tag(tag this_tag, ostream &out = cout);
+
+//! A Link defines an edge in the Enredo graph
 
 class Link{
 public:
@@ -34,7 +38,8 @@ public:
     bool try_to_concatenate_with(Link *other_link, short strand1 = 0, short strand2 = 0);
     void reverse();
     void print(ostream &out = cout);
-    uint get_shortest_length();
+    uint get_shortest_region_length();
+    uint get_longest_region_length();
     bool is_an_alternative_path_of(Link* other_link);
     uint get_num_of_mismatches(Link* other_link);
     std::vector< std::list<tag>::iterator > get_matching_tags(Link *other_link, short strand1 = 0, short strand2 = 0,
@@ -42,10 +47,11 @@ public:
     Link* split(vector<bool> tags_to_split);
     Link* split(std::vector< std::list<tag>::iterator > tags_to_split);
     short get_strand_for_matching_tags(Anchor* anchor);
+    bool is_valid(uint min_anchors, uint min_regions, uint min_length);
 
     list<Anchor*> anchor_list;
 
-    list<tag> tags;
+    list<tag> tags; //!< list of \link tag tags \endlink
 };
 
 #endif
