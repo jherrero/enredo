@@ -1306,7 +1306,7 @@ void Graph::split_unbalanced_links(float max_ratio, std::string debug)
 
 
 /*!
-    \fn Graph::assimilate_small_insertions(uint min_anchors, uint min_regions, uint min_length, uint max_insertion_length, std::string debug)
+    \fn Graph::resolve_small_palindromes(uint min_anchors, uint min_regions, uint min_length, std::string debug)
     Tries to get rid of small palindromes. Any unselected \link Link link \endlink
     will be tested to see if it corresponds to a palindrome. If it is, it will be resolved by removing
     the hairpin duplication and making a longer segment without the duplications
@@ -1321,7 +1321,7 @@ uint Graph::resolve_small_palindromes(uint min_anchors, uint min_regions, uint m
     Anchor * this_anchor = it->second;
     for (list<Link*>::iterator p_link_it = this_anchor->links.begin(); p_link_it != this_anchor->links.end(); p_link_it++) {
       Link * this_link = *p_link_it;
-      if (!this_link->is_valid(min_anchors, min_regions, min_length) and fmod(this_link->tags.size(), 2) == 0) {
+      if (!this_link->is_valid(min_anchors, min_regions, min_length) and fmod((float)this_link->tags.size(), 2.0f) == 0) {
         all_links.insert(this_link);
       }
     }
@@ -1481,12 +1481,13 @@ uint Graph::assimilate_small_insertions(uint min_anchors, uint min_regions, uint
       continue;
     }
 
+    bool has_been_assimilated = false;
 
     // ==========================================================
     // spot small insertions
     // ==========================================================
     // FIRST LOOP: back anchor
-    for (std::set<Link*>::iterator p_back_it = back_links.begin(); p_back_it != back_links.end(); p_back_it++) {
+    for (std::set<Link*>::iterator p_back_it = back_links.begin(); !has_been_assimilated and p_back_it != back_links.end(); p_back_it++) {
       Link* back_link = *p_back_it;
 
       // the get_matching_tags method assumes this link comes before the other one.
@@ -1510,7 +1511,7 @@ uint Graph::assimilate_small_insertions(uint min_anchors, uint min_regions, uint
 
 
       // SECOND LOOP: front anchor
-      for (std::set<Link*>::iterator p_front_it = front_links.begin(); p_front_it != front_links.end(); p_front_it++) {
+      for (std::set<Link*>::iterator p_front_it = front_links.begin(); !has_been_assimilated and p_front_it != front_links.end(); p_front_it++) {
         Link* front_link = *p_front_it;
         if (front_link == back_link) continue;
         // I am looking for insertions between front and back link, therefore they must
@@ -1583,6 +1584,7 @@ uint Graph::assimilate_small_insertions(uint min_anchors, uint min_regions, uint
           p_front_tag_it++;
         }
         delete(this_link);
+        has_been_assimilated = true;
         assimilate_count++;
 
       }
