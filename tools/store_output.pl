@@ -1,7 +1,10 @@
 #!/usr/bin/env perl
 use warnings;
 use strict;
+
 use Getopt::Long;
+use Sys::Hostname;
+use Cwd qw(realpath);
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::Compara::DBSQL::DBAdaptor;
 use Bio::EnsEMBL::Compara::MethodLinkSpeciesSet;
@@ -26,7 +29,7 @@ OPTIONS:
  --name method_link_species_set.name [default: derived from
       the species names and the method_link_type]
  --source method_link_species_set.source [default: ensembl]
- --url method_link_species_set.url [default: -empty-]
+ --url method_link_species_set.url [default: full path to input file]
  --force_strand [default: -disabled-]
  --help [default: -disabled-]
 
@@ -120,6 +123,10 @@ if (!$name) {
   $name = join("-", map {$_->name =~ /(.)\S+\s(.{3})/; $1.".".$2} values %$genome_dbs).
       " ".lc($method_link_type);
 }
+if (!$url) {
+  $url = "file://[".hostname."]".realpath($input_file);
+}
+
 my $method_link_species_set = Bio::EnsEMBL::Compara::MethodLinkSpeciesSet->new(
         -method_link_type => $method_link_type,
         -species_set => [values %$genome_dbs],
