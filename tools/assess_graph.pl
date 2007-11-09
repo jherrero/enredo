@@ -1,7 +1,7 @@
 use strict;
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::Compara::DBSQL::DBAdaptor;
-use Bio::EnsEMBL::Utils::Exception qw(throw);
+use Bio::EnsEMBL::Utils::Exception qw(throw verbose);
 use Getopt::Long;
 
 =head1 NAME
@@ -28,7 +28,7 @@ This script performs multiple type of analyses, including:
  - duplication stats
  - gene (protein coding) coverage
  - pseudogenes coverage
- - homologue assessment (not implemented yet)
+ - homologue assessment
  - ancient repeats assessment (won't be implemented in the near future)
 
 =head2 overall coverage
@@ -47,6 +47,22 @@ the 50% threshold.
 =head2 duplication stats
 
 This will look for co-linear blocks that contain more than one region per species.
+
+=head2 protein coding gene and pseudogene coverage
+
+This will look at whether the genes (protein coding or pseudogenes) are covered
+by the co-linear regions. The results show 4 categories: fully covered, broken,
+partially and uncovered. "Fully covered" are genes for which we can find a
+co-linear region which spans the whole gene, including UTRs. "Broken" corresponds
+to genes that are fully covered but not by one single co-linear region. "Partially"
+refers to genes that are partially covered only and missing is the count of genes
+completely uncovered
+
+=head2 homologue assessment
+
+This test look for matches between orthologue predictions and co-linear regions.
+As we expect the orthologue genes to be in the same co-linear regions, we can use
+this data to assess the synteny map
 
 =head1 SYNOPSIS
 
@@ -122,18 +138,258 @@ my $all_dnafrag_regions = get_all_DnaFragRegions($all_synteny_regions);
 print_genomic_coverage($all_dnafrag_regions, $quick);
 print_N50_stats($all_dnafrag_regions);
 print_duplication_stats($all_synteny_regions, $species_tree);
+print_gene_coverage($all_dnafrag_regions, $method_link_species_set, "protein_coding", $species);
 if (!$quick) {
-  print_gene_coverage($all_dnafrag_regions, $method_link_species_set, "protein_coding", $species);
+  print_transcript_coverage($all_dnafrag_regions, $method_link_species_set, "protein_coding", $species);
   print_gene_coverage($all_dnafrag_regions, $method_link_species_set, "pseudogene", $species);
+  print_homology_coverage($all_dnafrag_regions, $method_link_species_set, "ENSEMBL_ORTHOLOGUES", $species);
+  print_homology_coverage($all_dnafrag_regions, $method_link_species_set, "ENSEMBL_PARALOGUES", $species);
 }
 
 exit(0);
+
+
+sub print_homology_coverage {
+  my ($all_dnafrag_regions, $method_link_species_set, $method_link_type, $species) = @_;
+
+  print "############################################################\n",
+      "# HOMOLOGY COVERAGE ($method_link_type)\n",
+      "############################################################\n";
+
+  my $homology_adaptor = Bio::EnsEMBL::Registry->get_adaptor("Multi", "compara", "Homology");
+  my $method_link_species_set_adaptor = Bio::EnsEMBL::Registry->get_adaptor("Multi", "compara", "MethodLinkSpeciesSet");
+
+  my $species_set = $method_link_species_set->species_set;
+  my $pairs_of_species = [];
+  if (!$species) {
+    for (my $i = 0; $i < @$species_set - 1; $i++) {
+      for (my $j = $i + 1; $j < @$species_set; $j++) {
+        push(@$pairs_of_species, [$species_set->[$i], $species_set->[$j]]);
+      }
+    }
+    for (my $i = 0; $i < @$species_set; $i++) {
+      push(@$pairs_of_species, [$species_set->[$i]]);
+    }
+  } else {
+    my $this_genome_db = undef;
+    foreach my $this_species (@$species_set) {
+      if ($this_species->name eq $species) {
+        $this_genome_db = $this_species;
+        last;
+      }
+    }
+    foreach my $this_species (@$species_set) {
+      next if ($this_species->name eq $species);
+      push(@$pairs_of_species, [$this_genome_db, $this_species]);
+    }
+    push(@$pairs_of_species, [$this_genome_db]);
+  }
+
+  foreach my $this_pair_of_species (@$pairs_of_species) {
+    my $counts = {};
+    my $verbose_level = verbose();
+    verbose('OFF');
+    my $this_homology_method_link_species_set = $method_link_species_set_adaptor->fetch_by_method_link_type_GenomeDBs(
+        $method_link_type, $this_pair_of_species);
+    verbose($verbose_level);
+    next if (!$this_homology_method_link_species_set);
+    my $all_homologies = $homology_adaptor->fetch_all_by_MethodLinkSpeciesSet($this_homology_method_link_species_set);
+    my $i = 0;
+    foreach my $this_homology (@$all_homologies) {
+      $DB::single = 1;
+      $i++;
+#      exit(0) if ($i>=1000);
+      my $description = $this_homology->description();
+#       next if ($description ne "ortholog_many2many");
+#       $this_homology->print_homology;
+      
+      my ($first_gene, $second_gene) = map {$_->get_Gene} @{$this_homology->gene_list()};
+      my ($first_genome, $second_genome) = map {$_->genome_db->name} @{$this_homology->gene_list()};
+#      print "$first_genome, $second_genome\n";
+      my $first_gene_slice = $first_gene->slice->sub_Slice($first_gene->start, $first_gene->end);
+      my $second_gene_slice = $second_gene->slice->sub_Slice($second_gene->start, $second_gene->end);
+#       print $first_gene_slice->name, " -- ", $second_gene_slice->name, "\n";
+      my $dnafrag_regions_overlapping_first_gene = get_overlapping_dnafrag_region($all_dnafrag_regions, $first_gene_slice, $first_genome);
+      my $dnafrag_regions_overlapping_second_gene = get_overlapping_dnafrag_region($all_dnafrag_regions, $second_gene_slice, $second_genome);
+      my $match = 0;
+      foreach my $this_dnafrag_region_1 (@$dnafrag_regions_overlapping_first_gene) {
+       last if ($match);
+        foreach my $this_dnafrag_region_2 (@$dnafrag_regions_overlapping_second_gene) {
+          if ($this_dnafrag_region_1->synteny_region_id == $this_dnafrag_region_2->synteny_region_id) {
+            $match = 1;
+            last;
+          }
+        }
+      }
+      $counts->{$description}->{total}++;
+      if ($match) {
+        $counts->{$description}->{match}++;
+      }
+# # #      $first_gene = undef;
+# # #      $second_gene = undef;
+# # #      $first_gene_slice = undef;
+# # #      $second_gene_slice = undef;
+# # #      $dnafrag_regions_overlapping_first_gene = undef;
+# # #      $dnafrag_regions_overlapping_second_gene = undef;
+      $this_homology = undef;
+# # #       last;
+
+# # #       if ($i%100 == 0) {
+# # #         print $i, " -- ", qx"ps -l --pid $$ | grep $$";
+# # #           if ($i%1000 == 0) {
+# # #           print join(" -- ", map {$_->name} @$this_pair_of_species), "\n";
+# # #           foreach my $this_description (sort keys %$counts) {
+# # #             my $total = $counts->{$this_description}->{total};
+# # #             my $match = $counts->{$this_description}->{match};
+# # #             printf "  $this_description $match/$total [%.2f%%]", (100*$match/$total);
+# # #           }
+# # #           print "\n";
+# # #         }
+# # #       }
+    }
+    print join(" -- ", map {$_->name} @$this_pair_of_species), "\n";
+    foreach my $this_description (sort keys %$counts) {
+      my $total = $counts->{$this_description}->{total};
+      my $match = $counts->{$this_description}->{match};
+      printf "  $this_description $match/$total [%.2f%%]", (100*$match/$total);
+    }
+    print "\n";
+# # #    last;
+  }
+  print "\n";
+}
+
+sub get_overlapping_dnafrag_region {
+  my ($all_dnafrag_regions, $this_slice, $this_species_name) = @_;
+  my $overlapping_dnafrag_regions = [];
+
+#  $this_species_name = $this_slice->adaptor->db->get_MetaContainer->get_Species->binomial;
+  foreach my $this_dnafrag_region (@{$all_dnafrag_regions->{$this_species_name}->{$this_slice->seq_region_name}}) {
+    next if ($this_dnafrag_region->dnafrag_end < $this_slice->start);
+    last if ($this_dnafrag_region->dnafrag_start > $this_slice->end);
+    push(@$overlapping_dnafrag_regions, $this_dnafrag_region);
+  }
+
+  return $overlapping_dnafrag_regions;
+}
+
+
+sub get_slice_coverage {
+  my ($all_dnafrag_regions, $this_slice, $this_species_name) = @_;
+
+  my $num_of_synteny_regions = 0;
+  my $max_overlap = 0;
+  my $total_overlap = 0;
+  my $max_overlap_dnafrag_region = undef;
+  my $last_end = undef;
+  my $overlapping_dnafrag_regions = get_overlapping_dnafrag_region($all_dnafrag_regions, $this_slice, $this_species_name);
+  foreach my $this_dnafrag_region (@$overlapping_dnafrag_regions) {
+    my $overlap_slice = get_overlap($this_slice, $this_dnafrag_region->slice);
+    my $overlap_length;
+    if ($overlap_slice) {
+      $num_of_synteny_regions++;
+      if ($last_end) {
+        if ($overlap_slice->end <= $last_end) {
+          next;
+        }
+        if ($overlap_slice->start <= $last_end) {
+          # Test for the max_overlap before truncating the overlap slice
+          $overlap_length = $overlap_slice->length;
+          if ($overlap_length > $max_overlap) {
+            $max_overlap_dnafrag_region = $this_dnafrag_region;
+            $max_overlap = $overlap_length;
+          }
+          # Truncate the overlap slice, so no bp will be counted twice in the total
+          $overlap_slice = $overlap_slice->sub_Slice($last_end - $overlap_slice->start + 2, $overlap_slice->length);
+        }
+      }
+      $overlap_length = $overlap_slice->length;
+      if ($overlap_length > $max_overlap) {
+        $max_overlap_dnafrag_region = $this_dnafrag_region;
+        $max_overlap = $overlap_length;
+      }
+      $total_overlap += $overlap_length;
+      $last_end = $overlap_slice->end;
+    }
+  }
+  if ($num_of_synteny_regions == 0) {
+    return "uncovered";
+  } elsif ($max_overlap == $this_slice->length) {
+    return "fully";
+  } elsif ($total_overlap == $this_slice->length) {
+    return "broken";
+  } else {
+    return "partially";
+  }
+}
+
+sub print_transcript_coverage {
+  my ($all_dnafrag_regions, $method_link_species_set, $biotype, $species) = @_;
+
+  my $genome_dbs = $method_link_species_set->species_set;
+
+  print "############################################################\n",
+      "# TRANSCRIPT COVERAGE ($biotype)\n",
+      "############################################################\n";
+
+  foreach my $this_genome_db (@$genome_dbs) {
+    next if ($species and $this_genome_db->name ne $species);
+    my $gene_adaptor = $this_genome_db->db_adaptor->get_GeneAdaptor();
+    my $all_genes = $gene_adaptor->fetch_all_by_biotype($biotype);
+    my $sizes = [];
+    my $maxs = [];
+    my $totals = [];
+    my $num_transcripts = 0;
+    my ($fully, $broken, $partially, $uncovered) = (0, 0, 0, 0);
+    print " + ", $this_genome_db->name, " has ", scalar(@$all_genes), " $biotype genes\n";
+    foreach my $this_gene (@$all_genes) {
+      foreach my $this_transcript (@{$this_gene->get_all_Transcripts}) {
+        next if (!$this_transcript->translation);
+        $num_transcripts++;
+        my $this_transcript_slice = $this_gene->slice->sub_Slice(
+            $this_transcript->coding_region_start, $this_transcript->coding_region_end);
+        my $result = get_slice_coverage($all_dnafrag_regions, $this_transcript_slice, $this_genome_db->name);
+        if ($result eq "fully") {
+          $fully++;
+        } elsif ($result eq "broken") {
+          $broken++;
+        } elsif ($result eq "partially") {
+          $partially++;
+        } elsif ($result eq "uncovered") {
+          $uncovered++;
+        } else {
+          die "Unknown result: $result\n";
+        }
+        $this_transcript = undef;
+      }
+
+    }
+    print " + ", $this_genome_db->name, " has ", scalar(@$all_genes), " $biotype transcripts\n";
+    if ($num_transcripts) {
+      printf "  $fully (%.1f%%) fully covered; $broken (%.1f%%) broken; $partially (%.1f%%) partially; $uncovered (%.1f%%) missing\n",
+          ($fully*100/$num_transcripts), ($broken*100/$num_transcripts),
+          ($partially*100/$num_transcripts), ($uncovered*100/$num_transcripts);
+    } else {
+      printf "  $fully (%.1f%%) fully covered; $broken (%.1f%%) broken; $partially (%.1f%%) partially; $uncovered (%.1f%%) missing\n",
+          0, 0, 0, 0;
+    }
+  #   for (my $i = 0; $i < @$totals; $i++) {
+  #     print " $i\t", ($totals->[$i] or 0), "\t", ($maxs->[$i] or 0), "\t", ($sizes->[$i] or 0), "\n";
+  #   }
+  #   print join("\n", map {$_+=0} @$maxs), "\n";
+  }
+  print "\n";
+}
 
 
 sub print_gene_coverage {
   my ($all_dnafrag_regions, $method_link_species_set, $biotype, $species) = @_;
 
   my $genome_dbs = $method_link_species_set->species_set;
+
+  print "############################################################\n",
+      "# GENE COVERAGE ($biotype)\n",
+      "############################################################\n";
 
   foreach my $this_genome_db (@$genome_dbs) {
     next if ($species and $this_genome_db->name ne $species);
@@ -145,55 +401,18 @@ sub print_gene_coverage {
     my ($fully, $broken, $partially, $uncovered) = (0,0,0);
     print " + ", $this_genome_db->name, " has ", scalar(@$all_genes), " $biotype genes\n";
     foreach my $this_gene (@$all_genes) {
-
-      my $this_species_name = $this_genome_db->name;
       my $this_gene_slice = $this_gene->slice->sub_Slice($this_gene->start, $this_gene->end);
-      my $num_of_synteny_regions = 0;
-      my $max_overlap = 0;
-      my $total_overlap = 0;
-      my $max_overlap_dnafrag_region = undef;
-      my $last_end = undef;
-      foreach my $this_dnafrag_region (@{$all_dnafrag_regions->{$this_species_name}->{$this_gene_slice->seq_region_name}}) {
-        my $overlap_slice;
-        next if ($this_dnafrag_region->dnafrag_end < $this_gene_slice->start);
-        last if ($this_dnafrag_region->dnafrag_start > $this_gene_slice->end);
-        $overlap_slice = get_overlap($this_gene_slice, $this_dnafrag_region->slice)
-            if ($this_dnafrag_region->dnafrag->genome_db->name eq $this_genome_db->name);
-        my $overlap_length;
-        if ($overlap_slice) {
-          $num_of_synteny_regions++;
-          if ($last_end) {
-            if ($overlap_slice->end <= $last_end) {
-              next;
-            }
-            if ($overlap_slice->start <= $last_end) {
-              # Test for the max_overlap before truncating the overlap slice
-              $overlap_length = $overlap_slice->length;
-              if ($overlap_length > $max_overlap) {
-                $max_overlap_dnafrag_region = $this_dnafrag_region;
-                $max_overlap = $overlap_length;
-              }
-              # Truncate the overlap slice, so no bp will be counted twice in the total
-              $overlap_slice = $overlap_slice->sub_Slice($last_end - $overlap_slice->start + 2, $overlap_slice->length);
-            }
-          }
-          $overlap_length = $overlap_slice->length;
-          if ($overlap_length > $max_overlap) {
-            $max_overlap_dnafrag_region = $this_dnafrag_region;
-            $max_overlap = $overlap_length;
-          }
-          $total_overlap += $overlap_length;
-          $last_end = $overlap_slice->end;
-        }
-      }
-      if ($num_of_synteny_regions == 0) {
-        $uncovered++;
-      } elsif ($max_overlap == $this_gene_slice->length) {
+      my $result = get_slice_coverage($all_dnafrag_regions, $this_gene_slice, $this_genome_db->name);
+      if ($result eq "fully") {
         $fully++;
-      } elsif ($total_overlap == $this_gene_slice->length) {
+      } elsif ($result eq "broken") {
         $broken++;
-      } else {
+      } elsif ($result eq "partially") {
         $partially++;
+      } elsif ($result eq "uncovered") {
+        $uncovered++;
+      } else {
+        die "Unknown result: $result\n";
       }
     }
     if (scalar(@$all_genes)) {
@@ -209,6 +428,7 @@ sub print_gene_coverage {
   #   }
   #   print join("\n", map {$_+=0} @$maxs), "\n";
   }
+  print "\n";
 }
 
 
@@ -348,6 +568,10 @@ sub fetch_all_SyntenyRegions {
 sub print_genomic_coverage {
   my ($all_dnafrag_regions, $quick) = @_;
 
+  print "############################################################\n",
+      "# GENOMIC COVERAGE\n",
+      "############################################################\n";
+
   ## Get the length for all the DnaFrags (well, only if they have been used in a SyntenyRegion)
   my $dnafrag_length;
   foreach my $species_name (keys %{$all_dnafrag_regions}) {
@@ -467,6 +691,10 @@ sub print_genomic_coverage {
 sub print_N50_stats {
   my ($all_synteny_regions) = @_;
 
+  print "############################################################\n",
+      "# N50 STATS\n",
+      "############################################################\n";
+
   while (my ($species_name, $this_ref) = each %$all_dnafrag_regions) {
     my $lengths;
     my $sum_length = 0;
@@ -509,6 +737,10 @@ sub print_N50_stats {
 
 sub print_duplication_stats {
   my ($all_synteny_regions, $species_tree, $verbose) = @_;
+
+  print "############################################################\n",
+      "# DUPLICATIONS\n",
+      "############################################################\n";
 
   my $duplications = [];
   foreach my $this_synteny_region (@$all_synteny_regions) {
@@ -653,12 +885,13 @@ sub get_length_of_repeats {
 sub get_tree_by_GenomeDBs {
   my ($genome_dbs) = @_;
 
-  my $first_genome_db = shift @$genome_dbs;
+  my $first_genome_db = $genome_dbs->[0];
   my $node = $first_genome_db->taxon;
   $node->no_autoload_children;
   my $root = $node->root;
 
-  foreach my $genome_db (@$genome_dbs) {
+  for (my $i = 1; $i < @$genome_dbs; $i++) {
+    my $genome_db = $genome_dbs->[$i];
     my $node = $genome_db->taxon;
     unless (defined $node) {
       print STDERR $genome_db->name, " not in the database\n";
