@@ -45,10 +45,16 @@ OPTIONS:
 * source: the source for the new MethodLinkSpeciesSet entry. Default values
     is "ensembl".
 * url: the URL for the new MethodLinkSpeciesSet entry. Default value is
-    empty.
+    the location of the input_file.
 * force_strand: palindromic segments may have an undefined
     strand. This option sets these strands to 1 (you should probably avoid
     this option and use the EstimateStrand.pl script instead)
+* estimate_strand: palindromic segments may have an undefined
+    strand. This option requires the EstimateStrand.pl script which
+    uses PrePecan to get pariwise alignments in both directions and
+    guesses which one is the best
+* run_estimate_strand: run string for EstimateStrand.pl script. Default is:
+    "perl ./EstimateStrand.pl"
 * help: show this help message
 
 EXAMPLE:
@@ -65,6 +71,9 @@ my $source = "ensembl";
 my $url = "";
 my $input_file;
 my $force_strand = 0;
+my $estimate_strand = 0;
+my $run_estimate_strand = "perl ./EstimateStrand.pl";
+my $dry_run = 0;
 my $help = 0;
 
 GetOptions(
@@ -77,6 +86,9 @@ GetOptions(
     "db_url=s" => \$db_url,
     "i=s" => \$input_file,
     "force_strand" => \$force_strand,
+    "estimate_strand" => \$estimate_strand,
+    "run_estimate_strand=s" => \$run_estimate_strand,
+    "dry_run|dry-run|n" => \$dry_run,
     "help" => \$help,
   );
 
@@ -86,6 +98,7 @@ if ($help or !$input_file) {
 }
 
 my $reg = "Bio::EnsEMBL::Registry";
+$reg->no_version_check(1);
 if ($reg_url) {
   $reg->load_registry_from_url($reg_url);
 }
@@ -113,7 +126,6 @@ if ($db_url =~ /mysql\:\/\/([^\@]+\@)?([^\:\/]+)(\:\d+)?(\/\w+)?/) {
 }
 
 my ($all_synteny_regions, $genome_dbs) = parse_file($input_file);
-
 print "## Enredo parser\n";
 print "# Found ", scalar(@$all_synteny_regions), " blocks\n";
 
@@ -135,6 +147,17 @@ my $method_link_species_set = Bio::EnsEMBL::Compara::MethodLinkSpeciesSet->new(
         -source => $source,
         -url => $url,
     );
+
+if ($dry_run) {
+  print "# Method link type: ", $method_link_species_set->method_link_type, "\n";
+  print "# GenomeDBs: ", join (" -- ", map {$_->name} @{$method_link_species_set->species_set}), "\n";
+  print "# Method link species set name: ", $method_link_species_set->name, "\n";
+  print "# Method link species set source: ", $method_link_species_set->source, "\n";
+  print "# Method link species set URL: ", $method_link_species_set->url, "\n";
+  print "\n  -- DRY-RUN MODE: NO DATA HAVE BEEN STORED! --\n\n!";
+  exit(0);
+}
+
 $method_link_species_set = $method_link_species_set_adaptor->store($method_link_species_set);
 print "# Method link type: ", $method_link_species_set->method_link_type, "\n";
 print "# GenomeDBs: ", join (" -- ", map {$_->name} @{$method_link_species_set->species_set}), "\n";
@@ -177,7 +200,9 @@ sub parse_file {
 
   my $genome_db_adaptor = $reg->get_adaptor($compara, "compara", "GenomeDB");
   my $dnafrag_adaptor = $reg->get_adaptor($compara, "compara", "DnaFrag");
+  my $dnafrag_region_adaptor = $reg->get_adaptor($compara, "compara", "DnaFragRegion");
   my $dnafrags;
+  my $null_strands = 0;
 
   open(FILE, $file_name) or return undef;
   while(<FILE>) {
@@ -186,6 +211,71 @@ sub parse_file {
       #new block
       if (@$dnafrag_regions) {
         my $this_synteny_region = Bio::EnsEMBL::Compara::SyntenyRegion->new();
+        if ($estimate_strand and grep {$_ == 0} map {$_->dnafrag_strand} @$dnafrag_regions) {
+          my $fasta_to_dnafrag_region = {};
+          my $run_str = $run_estimate_strand;
+#           for (my $i = 0; $i < @$dnafrag_regions; $i++) {
+#             my $this_dnafrag_region = $dnafrag_regions->[$i];
+#             $this_dnafrag_region->adaptor($dnafrag_region_adaptor);
+#             print $this_dnafrag_region->dnafrag_strand, " ", $this_dnafrag_region->slice->name, "\n";
+#           }
+          for (my $i = 0; $i < @$dnafrag_regions; $i++) {
+            my $this_dnafrag_region = $dnafrag_regions->[$i];
+            $this_dnafrag_region->adaptor($dnafrag_region_adaptor);
+            my $filename = "seq_EstStr_".$$."_$i.fa";
+            $fasta_to_dnafrag_region->{$filename} = $this_dnafrag_region;
+            open(FASTA_FILE, ">$filename") or die;
+            print FASTA_FILE ">", $this_dnafrag_region->slice->name, "\n";
+            my $seq = $this_dnafrag_region->slice->get_repeatmasked_seq(undef,1)->seq;
+            $seq =~ s/(.{60})/$1\n/g;
+            print FASTA_FILE $seq, "\n";
+            close(FASTA_FILE);
+            if ($this_dnafrag_region->dnafrag_strand == 0) {
+              $run_str .= " --query $filename";
+            } else {
+              $run_str .= " --known $filename";
+            }
+          }
+#           print "\n\nRUNNING\n$run_str\n";
+#           print "[enter]";
+#           <STDIN>;
+          my $result = qx"$run_str 2> /dev/null";
+          if (!$result) {
+            die "====================================================\n".
+                "The following command line:\n".
+                "  $run_str\n".
+                "did not return any output\n".
+                "Use the --run_estimate_strand option to change its\n".
+                "default value ($run_estimate_strand)\n".
+                "====================================================\n";
+          }
+#           print "\n\nRESULTS\n$result\n";
+          foreach my $line (split("\n", $result)) {
+#             print "LINE: $line\n";
+            my ($filename, $strand, $score) = ($line =~ /(.+) (.+) ([\-\d.e]+)/);
+            if (defined($fasta_to_dnafrag_region->{$filename})) {
+              if ($strand eq "FWD") {
+                $fasta_to_dnafrag_region->{$filename}->dnafrag_strand(1);
+              } elsif ($strand eq "RVS") {
+                $fasta_to_dnafrag_region->{$filename}->dnafrag_strand(-1);
+              } else {
+                warn("Error");
+              }
+            } else {
+              warn("Error: $line; $filename\n");
+            }
+          }
+          foreach my $filename (keys %$fasta_to_dnafrag_region) {
+            unlink($filename);
+          }
+          unlink("output.mfa");
+#           for (my $i = 0; $i < @$dnafrag_regions; $i++) {
+#             my $this_dnafrag_region = $dnafrag_regions->[$i];
+#             print $this_dnafrag_region->dnafrag_strand, " ", $this_dnafrag_region->slice->name, "\n";
+#           }
+#           print "[enter]";
+#           <STDIN>;
+        }
         foreach my $this_dnafrag_region (@$dnafrag_regions) {
           $this_synteny_region->add_child($this_dnafrag_region);
         }
@@ -215,18 +305,17 @@ sub parse_file {
         die if (!$dnafrags->{$species}->{$chromosome});
       }
       if ($strand == 0) {
+        $null_strands++;
         if ($force_strand) {
           $strand = 1;
-        } else {
-          next;
         }
       }
       my $this_dnafrag_region = Bio::EnsEMBL::Compara::DnaFragRegion->new(
           -dnafrag_id => $dnafrags->{$species}->{$chromosome}->dbID,
           -dnafrag_start => $start,
           -dnafrag_end => $end,
-          -dnafrag_strand => $strand,
           );
+      $this_dnafrag_region->dnafrag_strand($strand);
       push(@$dnafrag_regions, $this_dnafrag_region);
     } else {
       die "Cannot understand line: $_";
@@ -241,6 +330,18 @@ sub parse_file {
     push(@$synteny_regions, $this_synteny_region);
   }
   close(FILE);
+
+  ## Warning about null strands
+  if ($null_strands) {
+    if ($estimate_strand) {
+      warn("The strand for $null_strands regions has been estimated with PrePecan aligner");
+    } elsif ($force_strand) {
+      warn("The strand for $null_strands regions has been set to 1");
+    } else {
+      warn("$null_strands regions have been ignored because the strand was undefined\n".
+          "Use the --force_strand or --estimate_strand (recommended) to solve this");
+    }
+  }
 
   if (wantarray) {
     return ($synteny_regions, $genome_dbs);
