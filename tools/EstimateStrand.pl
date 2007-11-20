@@ -73,7 +73,9 @@ if (!@$query_seqs) {
 }
 
 if (!@$known_seqs) {
-  push(@$known_seqs, shift(@$query_seqs));
+  my $this_query_seq = shift(@$query_seqs);
+  print "$this_query_seq FWD 100000\n";
+  push(@$known_seqs, $this_query_seq);
 }
 
 foreach my $this_query_seq (@$query_seqs) {
