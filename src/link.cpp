@@ -62,6 +62,7 @@ void Link::add_tag(string *species, string *chr, int start, int end, short stran
 
 /*!
     \fn Link::get_matching_tags(Link *other_link, short strand1, short strand2, bool allow_partial_match)
+    strand1 and/or strand2 can be 0. In this case, both possible strands will be tested.
  */
 std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link, short strand1, short strand2, bool allow_partial_match)
 {
@@ -94,6 +95,7 @@ std::vector< std::list<tag>::iterator > Link::get_matching_tags(Link *other_link
     for (list<tag>::iterator p_tag2 = other_link->tags.begin(); p_tag2 != other_link->tags.end(); p_tag2++) {
       other_tag_counter++;
       if (this == other_link and p_tag1 == p_tag2) {
+        /* Support for loops, avoid trivial match */
         continue;
       }
       if (p_tag1->species == p_tag2->species and p_tag1->chr == p_tag2->chr and p_tag1->start < p_tag2->end and p_tag2->start < p_tag1->end) {
@@ -607,5 +609,116 @@ bool Link::is_valid(uint min_anchors, uint min_regions, uint min_length)
       and this->get_shortest_region_length() >= min_length) {
     return true;
   }
+  return false;
+}
+
+
+/*!
+    \fn Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
+    A bridge is a link that is partially compatible with two valid links on each side. For instance,
+    an insertion in one species will result in one valid link on each side of the insertion and,
+    potentially, a break for the species with no insertions. This break can result in an unvalid
+    link for these species. This link will not have been concatenated to the other ones only because
+    it lacks the species with an insertion although the regions included in this link are still alignable
+    and it is desirable to align them. If allowed, Enredo will output them as extra valid blocks.
+ */
+bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
+{
+  /* If the link is valid, there is no much point in looking any further
+     (it should have been detected before as a valid link throuhg) */
+  if (this->is_valid(min_anchors, min_regions, min_length)) {
+    return true;
+  }
+  /* One sequence only cannot be aligned */
+  if (this->tags.size() < 2) {
+    return false;
+  }
+
+  list<tag> tags = this->tags;
+
+  Anchor *front_anchor = this->anchor_list.front();
+  Anchor *back_anchor = this->anchor_list.back();
+  /* Ignore loops at the moment */
+  if (front_anchor == back_anchor) {
+    return false;
+  }
+
+  Link *front_link = NULL;
+  Link *back_link = NULL;
+  std::list<Link*> links_from_front_anchor = front_anchor->links;
+  for (std::list<Link*>::iterator l_it = links_from_front_anchor.begin(); l_it != links_from_front_anchor.end(); l_it++) {
+    Link *other_link = *l_it;
+    if (other_link == this or !other_link->is_valid(min_anchors, min_regions, min_length)) {
+      continue;
+    }
+    if (other_link->anchor_list.front() == other_link->anchor_list.back()) {
+      /* ignore other link if they are loops, at least for the time being */
+      continue;
+    }
+    /* Linking anchor is the front one for this link (other_link->get_matching_tags(this...)) */
+    short this_strand = 1;
+    short other_strand = 0;
+    if (other_link->anchor_list.front() == front_anchor) {
+      /* Linking anchor is the front one for other link (other_link->get_matching_tags(this...)) */
+      /* reverse the strand */
+      other_strand = -1;
+    } else if (other_link->anchor_list.back() == front_anchor) {
+      /* Linking anchor is the front one for other link (other_link->get_matching_tags(this...)) */
+      /* strand is OK */
+      other_strand = 1;
+    } else {
+      cerr << "Hmm, something looks terribly wrong here: this_link does not match the front_anchor" << endl;
+      return false;
+    }
+    std::vector< std::list<tag>::iterator > this_tag_links_to_front =
+        other_link->get_matching_tags(this, other_strand, this_strand, false);
+    if (!this_tag_links_to_front.empty()) {
+      front_link = other_link;
+      break;
+    }
+  }
+  if (!front_link) {
+    return false;
+  }
+
+
+  std::list<Link*> links_from_back_anchor = back_anchor->links;
+  for (std::list<Link*>::iterator l_it = links_from_back_anchor.begin(); l_it != links_from_back_anchor.end(); l_it++) {
+    Link *other_link = *l_it;
+    if (other_link == this or !other_link->is_valid(min_anchors, min_regions, min_length)) {
+      continue;
+    }
+    if (other_link->anchor_list.front() == other_link->anchor_list.back()) {
+      /* ignore other link if they are loops, at least for the time being */
+      continue;
+    }
+    /* Linking anchor is the back one for this link (other_link->get_matching_tags(this...)) */
+    short this_strand = -1;
+    short other_strand = 0;
+    if (other_link->anchor_list.front() == front_anchor) {
+      /* Linking anchor is the front one for other link (other_link->get_matching_tags(this...)) */
+      /* reverse the strand */
+      other_strand = -1;
+    } else if (other_link->anchor_list.back() == front_anchor) {
+      /* Linking anchor is the front one for other link (other_link->get_matching_tags(this...)) */
+      /* strand is OK */
+      other_strand = 1;
+    } else {
+      cerr << "Hmm, something looks terribly wrong here: this_link does not match the back_anchor" << endl;
+      return false;
+    }
+    std::vector< std::list<tag>::iterator > this_tag_links_to_back =
+        other_link->get_matching_tags(this, other_strand, this_strand, false);
+    if (!this_tag_links_to_back.empty()) {
+      back_link = other_link;
+      break;
+    }
+  }
+
+  if (front_link and back_link) {
+    return true;
+  }
+
+  // Look whether both neighbour links are valid
   return false;
 }

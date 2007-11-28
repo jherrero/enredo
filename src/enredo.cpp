@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
   uint path_dissimilarity = 0;
   uint simplify_graph = 0;
   int histogram_size = 10;
+  bool allow_bridges = false;
   bool print_all = false;
   bool print_stats = false;
   bool help = false;
@@ -64,6 +65,10 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--max-ratio") and (a < argc - 1)) {
       a++;
       max_ratio = atof(argv[a]);
+    } else if ((this_arg == "--no-allow-bridges") or (this_arg == "--noallow-bridges")) {
+      allow_bridges = false;
+    } else if ((this_arg == "--allow-bridges")) {
+      allow_bridges = true;
     } else if (this_arg == "--all") {
       print_all = true;
     } else if ((this_arg == "--histogram-size") and (a < argc - 1)) {
@@ -121,6 +126,7 @@ int main(int argc, char *argv[])
   cout
 //       << "simplify-graph: " << (simplify_graph?"yes":"no") << endl
       << "simplify-graph: " << simplify_graph << endl
+      << "allow-bridges: " << (allow_bridges?"yes":"no") << endl
       << "print-all: " << (print_all?"yes":"no") << endl;
 
   cout << endl
@@ -247,19 +253,20 @@ int main(int argc, char *argv[])
     output_stream 
 //         << "# simplify-graph: " << (simplify_graph?"yes":"no") << endl
         << "# simplify-graph: " << simplify_graph << endl
+        << "# allow-bridges: " << (allow_bridges?"yes":"no") << endl
         << "# print-all: " << (print_all?"yes":"no") << endl
         << endl;
     if (print_all) {
       num_of_blocks = my_graph.print_links(output_stream);
     } else {
-      num_of_blocks = my_graph.print_links(output_stream, min_anchors, min_regions, min_length);
+      num_of_blocks = my_graph.print_links(output_stream, min_anchors, min_regions, min_length, allow_bridges);
     }
     output_stream.close();
   } else {
     if (print_all) {
       num_of_blocks = my_graph.print_links(cout);
     } else {
-      num_of_blocks = my_graph.print_links(cout, min_anchors, min_regions, min_length);
+      num_of_blocks = my_graph.print_links(cout, min_anchors, min_regions, min_length, allow_bridges);
     }
   }
   cout << " Got " << num_of_blocks << " blocks." << endl;

@@ -414,9 +414,9 @@ void Graph::print_stats(int histogram_size)
 
 
 /*!
-    \fn Graph::print_links(ostream &out, int min_anchors, int min_regions, int min_length)
+    \fn Graph::print_links(ostream &out, int min_anchors, int min_regions, int min_length, bool allow_bridges)
  */
-unsigned long int Graph::print_links(ostream &out, uint min_anchors, uint min_regions, uint min_length)
+unsigned long int Graph::print_links(ostream &out, uint min_anchors, uint min_regions, uint min_length, bool allow_bridges)
 {
   int num_blocks = 0;
   set<Link*> all_links;
@@ -425,6 +425,10 @@ unsigned long int Graph::print_links(ostream &out, uint min_anchors, uint min_re
     for (list<Link*>::iterator p_link_it = this_anchor->links.begin(); p_link_it != this_anchor->links.end(); p_link_it++) {
       Link * this_link = *p_link_it;
       if (this_link->is_valid(min_anchors, min_regions, min_length)) {
+        if (all_links.insert(this_link).second) {
+          num_blocks++;
+        }
+      } else if (allow_bridges and this_link->is_bridge(min_anchors, min_regions, min_length)) {
         if (all_links.insert(this_link).second) {
           num_blocks++;
         }
@@ -700,7 +704,7 @@ int Graph::simplify(uint min_anchors, uint min_regions, uint min_length, std::st
     \fn Graph::simplify_aggressive(uint min_anchors, uint min_regions, uint min_length, std::string debug)
     Tries to get rid of small or spurious path matches. The idea is that two paths may join in a very small
     region and break a longer co-linear region. Let A-B-C-D, A-B-X and Y-C-D be three paths in the Graph. The
-    minimize step would join the first two in A-B and the firs and the third in C-D. If (A-B) and (C-D) do not
+    minimize step would join the first two in A-B and the first and the third in C-D. If (A-B) and (C-D) do not
     fullfill all the requirements to be considered as a co-linear region, this method will try to split them
     in order to allow the minimization of (A-B-C-D).
     -# Get all the \link Link links \endlink with enough regions to be eligible as selected link

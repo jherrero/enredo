@@ -26,7 +26,8 @@ public:
     void minimize(std::string debug = "");
     void print_anchors_histogram(std::ostream &out = std::cout);
     void print_stats(int histogram_size);
-    unsigned long int print_links(std::ostream &out = std::cout, uint min_anchors = 1, uint min_regions = 1, uint min_length = 0);
+    unsigned long int print_links(std::ostream &out = std::cout, uint min_anchors = 1, uint min_regions = 1,
+        uint min_length = 0, bool allow_bridges = false);
     int merge_alternative_paths(uint max_anchors, uint max_length = 10000, std::string debug = "");
     void study_anchors(void);
     int simplify(uint min_anchors = 1, uint min_regions = 1, uint min_length = 0, std::string debug = "");
