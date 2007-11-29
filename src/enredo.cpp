@@ -29,7 +29,7 @@ int main(int argc, char *argv[])
   uint path_dissimilarity = 0;
   uint simplify_graph = 0;
   int histogram_size = 10;
-  bool allow_bridges = false;
+  bool allow_bridges = true;
   bool print_all = false;
   bool print_stats = false;
   bool help = false;
@@ -65,9 +65,9 @@ int main(int argc, char *argv[])
     } else if ((this_arg == "--max-ratio") and (a < argc - 1)) {
       a++;
       max_ratio = atof(argv[a]);
-    } else if ((this_arg == "--no-allow-bridges") or (this_arg == "--noallow-bridges")) {
+    } else if ((this_arg == "--no-bridges") or (this_arg == "--nobridges")) {
       allow_bridges = false;
-    } else if ((this_arg == "--allow-bridges")) {
+    } else if (this_arg == "--bridges") {
       allow_bridges = true;
     } else if (this_arg == "--all") {
       print_all = true;
@@ -111,23 +111,28 @@ int main(int argc, char *argv[])
   cout << endl
       << " Parameters:" << endl
       << "====================================" << endl
-      << "Input-file: " << input_filename << endl
-      << "min-score: " << min_score << endl
-      << "max-gap-length: " << max_gap_length << endl
-      << "max-path-dissimilarity: " << path_dissimilarity << endl
-      << "min-length: " << min_length << endl
-      << "min-regions: " << min_regions << endl
-      << "min-anchors: " << min_anchors << endl;
+      << "Input-file \"" << input_filename << "\"" << endl
+      << "--min-score " << min_score << endl
+      << "--max-gap-length " << max_gap_length << endl
+      << "--max-path-dissimilarity " << path_dissimilarity << endl
+      << "--min-length " << min_length << endl
+      << "--min-regions " << min_regions << endl
+      << "--min-anchors " << min_anchors << endl;
   if (max_ratio>1.0f) {
-    cout << "max-ratio: " << max_ratio << endl;
+    cout << "--max-ratio " << max_ratio << endl;
   } else {
-    cout << "max-ratio: off" << endl;
+    cout << "[max-ratio off]" << endl;
   }
   cout
 //       << "simplify-graph: " << (simplify_graph?"yes":"no") << endl
-      << "simplify-graph: " << simplify_graph << endl
-      << "allow-bridges: " << (allow_bridges?"yes":"no") << endl
-      << "print-all: " << (print_all?"yes":"no") << endl;
+      << "--simplify-graph " << simplify_graph << endl;
+  if (print_all) {
+    cout << "--all" << endl;
+  } else if (allow_bridges) {
+    cout << "--bridges" << endl;
+  } else {
+    cout << "[valid edges only]" << endl;
+  }
 
   cout << endl
       << " Reading input file:" << endl
@@ -238,24 +243,29 @@ int main(int argc, char *argv[])
         << "#" << endl
         << "#  Parameters:" << endl
         << "# ====================================" << endl
-        << "# Input-file: " << input_filename << endl
-        << "# min-score: " << min_score << endl
-        << "# max-gap-length: " << max_gap_length << endl
-        << "# max-path-dissimilarity: " << path_dissimilarity << endl
-        << "# min-length: " << min_length << endl
-        << "# min-regions: " << min_regions << endl
-        << "# min-anchors: " << min_anchors << endl;
+        << "# Input-file \"" << input_filename << "\"" << endl
+        << "# --min-score " << min_score << endl
+        << "# --max-gap-length " << max_gap_length << endl
+        << "# --max-path-dissimilarity " << path_dissimilarity << endl
+        << "# --min-length " << min_length << endl
+        << "# --min-regions " << min_regions << endl
+        << "# --min-anchors " << min_anchors << endl;
     if (max_ratio>1.0f) {
-      output_stream << "# max-ratio: " << max_ratio << endl;
+      output_stream << "# --max-ratio " << max_ratio << endl;
     } else {
-      output_stream << "# max-ratio: off" << endl;
+      output_stream << "# max-ratio [off]" << endl;
     }
     output_stream 
 //         << "# simplify-graph: " << (simplify_graph?"yes":"no") << endl
-        << "# simplify-graph: " << simplify_graph << endl
-        << "# allow-bridges: " << (allow_bridges?"yes":"no") << endl
-        << "# print-all: " << (print_all?"yes":"no") << endl
-        << endl;
+        << "# --simplify-graph " << simplify_graph << endl;
+    if (print_all) {
+      output_stream << "# --all" << endl;
+    } else if (allow_bridges) {
+      output_stream << "# --bridges" << endl;
+    } else {
+      output_stream << "# [valid edges only]" << endl;
+    }
+    output_stream << endl;
     if (print_all) {
       num_of_blocks = my_graph.print_links(output_stream);
     } else {
@@ -288,14 +298,16 @@ void print_help(void)
       << " --max-path-dissimilarity: merge alternative paths in the graph if their" << endl
       << "       dissimilarity is up to this threshold (def: 0)" << endl
       << " --simplify-graph: try to split small edges in order to lengthen" << endl
-      << "       other syntenic blocks. Ranges from 0 (none) to 6 (more aggressive)." << endl
+      << "       other blocks. Ranges from 0 (none) to 7 (more aggressive)." << endl
       << "       (def: 0)" << endl
       << endl
-      << " --min-length: minimum length of final syntenic block (def: 100000)" << endl
-      << " --min-regions: minimum number of region in the syntenic block (def: 2)" << endl
-      << " --min-anchors: minimum number of anchors in the syntenic block (def: 3)" << endl
-      << " --all: print all the syntenic block (overwrite previous values)" << endl
+      << " --min-length: minimum length of a valid blocks (def: 100000)" << endl
+      << " --min-regions: minimum number of region in a valid block (def: 2)" << endl
+      << " --min-anchors: minimum number of anchors in a valid block (def: 3)" << endl
+      << " --[no]bridges: validate unvalid blocks that bridge two valid blocks (def: yes)" << endl
+      << " --all: print all the blocks (overwrite previous values)" << endl
       << endl
+      << " --[no]stats: Print some stats about the blocks" << endl
       << " --histogram-size: size for histogram of num. of regions pero link (def: 10)" << endl
       << endl
       << " --help: prints this help" << endl
