@@ -622,7 +622,7 @@ bool Link::is_valid(uint min_anchors, uint min_regions, uint min_length)
     it lacks the species with an insertion although the regions included in this link are still alignable
     and it is desirable to align them. If allowed, Enredo will output them as extra valid blocks.
  */
-bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
+bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length, bool trim_link)
 {
   /* If the link is valid, there is no much point in looking any further
      (it should have been detected before as a valid link throuhg) */
@@ -646,6 +646,7 @@ bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
   Link *front_link = NULL;
   Link *back_link = NULL;
   std::list<Link*> links_from_front_anchor = front_anchor->links;
+  std::vector< std::list<tag>::iterator > front_tag_links_to_this;
   for (std::list<Link*>::iterator l_it = links_from_front_anchor.begin(); l_it != links_from_front_anchor.end(); l_it++) {
     Link *other_link = *l_it;
     if (other_link == this or !other_link->is_valid(min_anchors, min_regions, min_length)) {
@@ -670,9 +671,8 @@ bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
       cerr << "Hmm, something looks terribly wrong here: this_link does not match the front_anchor" << endl;
       return false;
     }
-    std::vector< std::list<tag>::iterator > this_tag_links_to_front =
-        other_link->get_matching_tags(this, other_strand, this_strand, false);
-    if (!this_tag_links_to_front.empty()) {
+    front_tag_links_to_this = other_link->get_matching_tags(this, other_strand, this_strand, false);
+    if (!front_tag_links_to_this.empty()) {
       front_link = other_link;
       break;
     }
@@ -683,6 +683,7 @@ bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
 
 
   std::list<Link*> links_from_back_anchor = back_anchor->links;
+  std::vector< std::list<tag>::iterator > back_tag_links_to_this;
   for (std::list<Link*>::iterator l_it = links_from_back_anchor.begin(); l_it != links_from_back_anchor.end(); l_it++) {
     Link *other_link = *l_it;
     if (other_link == this or !other_link->is_valid(min_anchors, min_regions, min_length)) {
@@ -695,11 +696,11 @@ bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
     /* Linking anchor is the back one for this link (other_link->get_matching_tags(this...)) */
     short this_strand = -1;
     short other_strand = 0;
-    if (other_link->anchor_list.front() == front_anchor) {
+    if (other_link->anchor_list.front() == back_anchor) {
       /* Linking anchor is the front one for other link (other_link->get_matching_tags(this...)) */
       /* reverse the strand */
       other_strand = -1;
-    } else if (other_link->anchor_list.back() == front_anchor) {
+    } else if (other_link->anchor_list.back() == back_anchor) {
       /* Linking anchor is the front one for other link (other_link->get_matching_tags(this...)) */
       /* strand is OK */
       other_strand = 1;
@@ -707,15 +708,118 @@ bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length)
       cerr << "Hmm, something looks terribly wrong here: this_link does not match the back_anchor" << endl;
       return false;
     }
-    std::vector< std::list<tag>::iterator > this_tag_links_to_back =
-        other_link->get_matching_tags(this, other_strand, this_strand, false);
-    if (!this_tag_links_to_back.empty()) {
+    back_tag_links_to_this = other_link->get_matching_tags(this, other_strand, this_strand, false);
+    if (!back_tag_links_to_this.empty()) {
       back_link = other_link;
       break;
     }
   }
 
+  /* Print resulting link (beside the other ones) */
   if (front_link and back_link) {
+    if (trim_link) {
+      std::list<tag>::iterator p_front_tag_it = front_link->tags.begin();
+      for (uint i=0; i< front_tag_links_to_this.size(); i++) {
+//         cout << setw(2) << i+1 << " : ";
+//         print_tag(*p_front_tag_it);
+//         cout << " :: ";
+        if (front_tag_links_to_this[i] != this->tags.end()) {
+//           print_tag(*front_tag_links_to_this[i]);
+          if (p_front_tag_it->start <= front_tag_links_to_this[i]->start and
+              p_front_tag_it->end >= front_tag_links_to_this[i]->start ) {
+            front_tag_links_to_this[i]->start = p_front_tag_it->end + 1;
+          } else if (p_front_tag_it->start <= front_tag_links_to_this[i]->end and
+              p_front_tag_it->end >= front_tag_links_to_this[i]->end ) {
+            front_tag_links_to_this[i]->end = p_front_tag_it->start - 1;
+          } else {
+            cerr << "ERROR: Could not trim the front of a bridge" << endl;
+          }
+//         } else {
+//           cout << " ----------------------------------------- ";
+        }
+        p_front_tag_it++;
+//         cout << endl;
+      }
+//       cout << endl;
+      std::list<tag>::iterator p_back_tag_it = back_link->tags.begin();
+      for (uint i=0; i< back_tag_links_to_this.size(); i++) {
+//         cout << setw(2) << i+1 << " : ";
+        if (back_tag_links_to_this[i] != this->tags.end()) {
+//           print_tag(*back_tag_links_to_this[i]);
+          if (p_back_tag_it->start <= back_tag_links_to_this[i]->start and
+              p_back_tag_it->end >= back_tag_links_to_this[i]->start ) {
+            back_tag_links_to_this[i]->start = p_back_tag_it->end + 1;
+          } else if (p_back_tag_it->start <= back_tag_links_to_this[i]->end and
+              p_back_tag_it->end >= back_tag_links_to_this[i]->end ) {
+            back_tag_links_to_this[i]->end = p_back_tag_it->start - 1;
+          } else {
+            cerr << "ERROR: Could not trim the back of a bridge" << endl;
+          }
+//         } else {
+//           cout << " ----------------------------------------- ";
+        }
+//         cout << " :: ";
+//         print_tag(*p_back_tag_it);
+        p_back_tag_it++;
+//         cout << endl;
+      }
+    }
+    
+    
+//     cout << endl;
+//     cout << endl;
+    
+    
+    
+    /* Print resulting link (beside the other ones) */
+//     p_front_tag_it = front_link->tags.begin();
+//     for (uint i=0; i< front_tag_links_to_this.size(); i++) {
+//       cout << setw(2) << i+1 << " : ";
+//       print_tag(*p_front_tag_it);
+//       cout << " :: ";
+//       if (front_tag_links_to_this[i] != this->tags.end()) {
+//         print_tag(*front_tag_links_to_this[i]);
+//         if (p_front_tag_it->start <= front_tag_links_to_this[i]->start and
+//             p_front_tag_it->end >= front_tag_links_to_this[i]->start ) {
+//           front_tag_links_to_this[i]->start = p_front_tag_it->end + 1;
+//         } else if (p_front_tag_it->start <= front_tag_links_to_this[i]->end and
+//             p_front_tag_it->end >= front_tag_links_to_this[i]->end ) {
+//           front_tag_links_to_this[i]->end = p_front_tag_it->start - 1;
+//         }
+//       } else {
+//         cout << " ----------------------------------------- ";
+//       }
+//       p_front_tag_it++;
+//       cout << endl;
+//     }
+//     cout << endl;
+//     p_back_tag_it = back_link->tags.begin();
+//     for (uint i=0; i< back_tag_links_to_this.size(); i++) {
+//       cout << setw(2) << i+1 << " : ";
+//       if (back_tag_links_to_this[i] != this->tags.end()) {
+//         print_tag(*back_tag_links_to_this[i]);
+//         if (p_back_tag_it->start <= back_tag_links_to_this[i]->start and
+//             p_back_tag_it->end >= back_tag_links_to_this[i]->start ) {
+//           back_tag_links_to_this[i]->start = p_back_tag_it->end + 1;
+//         } else if (p_back_tag_it->start <= back_tag_links_to_this[i]->end and
+//             p_back_tag_it->end >= back_tag_links_to_this[i]->end ) {
+//           back_tag_links_to_this[i]->end = p_back_tag_it->start - 1;
+//         }
+//       } else {
+//         cout << " ----------------------------------------- ";
+//       }
+//       cout << " :: ";
+//       print_tag(*p_back_tag_it);
+//       p_back_tag_it++;
+//       cout << endl;
+//     }
+
+    
+    
+    
+    
+//     string res;
+//     cin >> res;
     return true;
   }
 

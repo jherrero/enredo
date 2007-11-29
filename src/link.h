@@ -48,7 +48,7 @@ public:
     Link* split(std::vector< std::list<tag>::iterator > tags_to_split);
     short get_strand_for_matching_tags(Anchor* anchor);
     bool is_valid(uint min_anchors, uint min_regions, uint min_length);
-    bool is_bridge(uint min_anchors, uint min_regions, uint min_length);
+    bool is_bridge(uint min_anchors, uint min_regions, uint min_length, bool trim_link = true);
 
     list<Anchor*> anchor_list;
 
