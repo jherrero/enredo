@@ -720,106 +720,140 @@ bool Link::is_bridge(uint min_anchors, uint min_regions, uint min_length, bool t
     if (trim_link) {
       std::list<tag>::iterator p_front_tag_it = front_link->tags.begin();
       for (uint i=0; i< front_tag_links_to_this.size(); i++) {
-//         cout << setw(2) << i+1 << " : ";
-//         print_tag(*p_front_tag_it);
-//         cout << " :: ";
+//         if (debug) {
+//           cout << setw(2) << i+1 << " : ";
+//           print_tag(*p_front_tag_it);
+//           cout << " :: ";
+//         }
         if (front_tag_links_to_this[i] != this->tags.end()) {
-//           print_tag(*front_tag_links_to_this[i]);
+//           if (debug) {
+//             print_tag(*front_tag_links_to_this[i]);
+//           }
           if (p_front_tag_it->start <= front_tag_links_to_this[i]->start and
               p_front_tag_it->end >= front_tag_links_to_this[i]->start ) {
-            front_tag_links_to_this[i]->start = p_front_tag_it->end + 1;
+            /* Should be = p_front_tag_it->end + 1 but this result in a bug when
+               dealing with a bridge of length 0. See below */
+            front_tag_links_to_this[i]->start = p_front_tag_it->end;
           } else if (p_front_tag_it->start <= front_tag_links_to_this[i]->end and
+            /* Should be = p_front_tag_it->start - 1 but this result in a bug when
+               dealing with a bridge of length 0. See below */
               p_front_tag_it->end >= front_tag_links_to_this[i]->end ) {
-            front_tag_links_to_this[i]->end = p_front_tag_it->start - 1;
+            front_tag_links_to_this[i]->end = p_front_tag_it->start;
           } else {
             cerr << "ERROR: Could not trim the front of a bridge" << endl;
           }
-//         } else {
+//         } else if (debug) {
 //           cout << " ----------------------------------------- ";
         }
         p_front_tag_it++;
-//         cout << endl;
+//         if (debug) {
+//           cout << endl;
+//         }
       }
-//       cout << endl;
+//       if (debug) {
+//         cout << endl;
+//       }
       std::list<tag>::iterator p_back_tag_it = back_link->tags.begin();
       for (uint i=0; i< back_tag_links_to_this.size(); i++) {
-//         cout << setw(2) << i+1 << " : ";
+//         if (debug) {
+//           cout << setw(2) << i+1 << " : ";
+//         }
         if (back_tag_links_to_this[i] != this->tags.end()) {
-//           print_tag(*back_tag_links_to_this[i]);
+//           if (debug) {
+//             print_tag(*back_tag_links_to_this[i]);
+//           }
+          /* Also fix the start or the end by 1 (see above). This should have been done
+             before but this lead to an error when front and back link are just next to
+             each other. This if clause works for partially overlapping links only, that
+             case would lead to the remaining link to be fully included into the back
+             link */
           if (p_back_tag_it->start <= back_tag_links_to_this[i]->start and
               p_back_tag_it->end >= back_tag_links_to_this[i]->start ) {
             back_tag_links_to_this[i]->start = p_back_tag_it->end + 1;
+            /* fix the end of the link */
+            back_tag_links_to_this[i]->end = back_tag_links_to_this[i]->end - 1;
           } else if (p_back_tag_it->start <= back_tag_links_to_this[i]->end and
               p_back_tag_it->end >= back_tag_links_to_this[i]->end ) {
             back_tag_links_to_this[i]->end = p_back_tag_it->start - 1;
+            /* fix the start of the link */
+            back_tag_links_to_this[i]->start = back_tag_links_to_this[i]->start + 1;
           } else {
             cerr << "ERROR: Could not trim the back of a bridge" << endl;
           }
-//         } else {
+//         } else if (debug) {
 //           cout << " ----------------------------------------- ";
         }
-//         cout << " :: ";
-//         print_tag(*p_back_tag_it);
+//         if (debug) {
+//           cout << " :: ";
+//           print_tag(*p_back_tag_it);
+//           cout << endl;
+//         }
         p_back_tag_it++;
-//         cout << endl;
       }
+    
+    
+//     cout << endl;
+//     cout << endl;
+    
+    
+    
+      /* Print resulting link (beside the other ones) */
+      bool empty_tag = false;
+      do {
+        empty_tag = false;
+        for (std::list<tag>::iterator p_this_tag_it = this->tags.begin();
+            p_this_tag_it != this->tags.end(); p_this_tag_it++) {
+          if (p_this_tag_it->start > p_this_tag_it->end) {
+            empty_tag = true;
+//             this->print();
+            this->tags.erase(p_this_tag_it);
+//             this->print();
+            break;
+          }
+        }
+      } while (empty_tag);
+      if (this->tags.size() < 2) {
+        return false;
+      }
+        
+//       if (0) {
+//         p_front_tag_it = front_link->tags.begin();
+//         for (uint i=0; i< front_tag_links_to_this.size(); i++) {
+//           cout << setw(2) << i+1 << " : ";
+//           print_tag(*p_front_tag_it);
+//           cout << " || ";
+//           if (front_tag_links_to_this[i] != this->tags.end()) {
+//             print_tag(*front_tag_links_to_this[i]);
+//           } else {
+//             cout << " ----------------------------------------- ";
+//           }
+//           p_front_tag_it++;
+//           cout << endl;
+//         }
+//         cout << endl;
+//         p_back_tag_it = back_link->tags.begin();
+//         for (uint i=0; i< back_tag_links_to_this.size(); i++) {
+//           cout << setw(2) << i+1 << " : ";
+//           if (back_tag_links_to_this[i] != this->tags.end()) {
+//             print_tag(*back_tag_links_to_this[i]);
+//           } else {
+//             cout << " ----------------------------------------- ";
+//           }
+//           cout << " || ";
+//           print_tag(*p_back_tag_it);
+//           p_back_tag_it++;
+//           cout << endl;
+//         }
+//         
+//         
+//         
+//         
+//     cout << endl;
+//     cout << endl;
+// /*        string res;
+//         cin >> res;*/
+//       }
     }
-    
-    
-//     cout << endl;
-//     cout << endl;
-    
-    
-    
-    /* Print resulting link (beside the other ones) */
-//     p_front_tag_it = front_link->tags.begin();
-//     for (uint i=0; i< front_tag_links_to_this.size(); i++) {
-//       cout << setw(2) << i+1 << " : ";
-//       print_tag(*p_front_tag_it);
-//       cout << " :: ";
-//       if (front_tag_links_to_this[i] != this->tags.end()) {
-//         print_tag(*front_tag_links_to_this[i]);
-//         if (p_front_tag_it->start <= front_tag_links_to_this[i]->start and
-//             p_front_tag_it->end >= front_tag_links_to_this[i]->start ) {
-//           front_tag_links_to_this[i]->start = p_front_tag_it->end + 1;
-//         } else if (p_front_tag_it->start <= front_tag_links_to_this[i]->end and
-//             p_front_tag_it->end >= front_tag_links_to_this[i]->end ) {
-//           front_tag_links_to_this[i]->end = p_front_tag_it->start - 1;
-//         }
-//       } else {
-//         cout << " ----------------------------------------- ";
-//       }
-//       p_front_tag_it++;
-//       cout << endl;
-//     }
-//     cout << endl;
-//     p_back_tag_it = back_link->tags.begin();
-//     for (uint i=0; i< back_tag_links_to_this.size(); i++) {
-//       cout << setw(2) << i+1 << " : ";
-//       if (back_tag_links_to_this[i] != this->tags.end()) {
-//         print_tag(*back_tag_links_to_this[i]);
-//         if (p_back_tag_it->start <= back_tag_links_to_this[i]->start and
-//             p_back_tag_it->end >= back_tag_links_to_this[i]->start ) {
-//           back_tag_links_to_this[i]->start = p_back_tag_it->end + 1;
-//         } else if (p_back_tag_it->start <= back_tag_links_to_this[i]->end and
-//             p_back_tag_it->end >= back_tag_links_to_this[i]->end ) {
-//           back_tag_links_to_this[i]->end = p_back_tag_it->start - 1;
-//         }
-//       } else {
-//         cout << " ----------------------------------------- ";
-//       }
-//       cout << " :: ";
-//       print_tag(*p_back_tag_it);
-//       p_back_tag_it++;
-//       cout << endl;
-//     }
-
-    
-    
-    
-    
-//     string res;
-//     cin >> res;
     return true;
   }
 
