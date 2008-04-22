@@ -1,6 +1,7 @@
 use strict;
 use Bio::EnsEMBL::Registry;
 use Bio::EnsEMBL::Compara::DBSQL::DBAdaptor;
+use Bio::EnsEMBL::Compara::DnaFragRegion;
 use Bio::EnsEMBL::Utils::Exception qw(throw verbose);
 use Getopt::Long;
 
@@ -505,11 +506,25 @@ sub get_all_DnaFragRegions {
   my $all_dnafrag_regions;
 
   foreach my $this_synteny_region (@$all_synteny_regions) {
-    foreach my $this_dnafrag_region (@{$this_synteny_region->get_all_DnaFragRegions()}) {
-      my $dnafrag = $this_dnafrag_region->dnafrag;
-      my $species_name = $dnafrag->genome_db->name;
-      my $dnafrag_name = $dnafrag->name;
-      push(@{$all_dnafrag_regions->{$species_name}->{$dnafrag_name}}, $this_dnafrag_region);
+    if ($this_synteny_region->can("get_all_DnaFragRegions")) {
+      foreach my $this_dnafrag_region (@{$this_synteny_region->get_all_DnaFragRegions()}) {
+        my $dnafrag = $this_dnafrag_region->dnafrag;
+        my $species_name = $dnafrag->genome_db->name;
+        my $dnafrag_name = $dnafrag->name;
+        push(@{$all_dnafrag_regions->{$species_name}->{$dnafrag_name}}, $this_dnafrag_region);
+      }
+    } elsif ($this_synteny_region->can("get_all_GenomicAligns")) {
+      foreach my $this_genomic_align (@{$this_synteny_region->get_all_GenomicAligns()}) {
+        my $dnafrag = $this_genomic_align->dnafrag;
+        my $species_name = $this_genomic_align->genome_db->name;
+        my $dnafrag_name = $dnafrag->name;
+	my $this_dnafrag_region = new Bio::EnsEMBL::Compara::DnaFragRegion;
+	$this_dnafrag_region->dnafrag($dnafrag);
+	$this_dnafrag_region->dnafrag_start($this_genomic_align->dnafrag_start);
+	$this_dnafrag_region->dnafrag_end($this_genomic_align->dnafrag_end);
+	$this_dnafrag_region->dnafrag_strand($this_genomic_align->dnafrag_strand);
+        push(@{$all_dnafrag_regions->{$species_name}->{$dnafrag_name}}, $this_dnafrag_region);
+      }
     }
   }
   foreach my $this_species (keys %$all_dnafrag_regions) {
@@ -547,9 +562,16 @@ sub fetch_all_SyntenyRegions {
   throw("The database do not contain MethodLinkSpeciesSet with dbID $method_link_species_set_id!")
       if (!$method_link_species_set);
 
-  my $synteny_region_adaptor = $compara_dba->get_SyntenyRegionAdaptor;
-  my $all_synteny_regions = $synteny_region_adaptor->fetch_all_by_MethodLinkSpeciesSet(
+  my $all_synteny_regions;
+  if ($method_link_species_set->method_link_class =~ /GenomicAlignBlock/) {
+    my $genomic_align_block_adaptor = $compara_dba->get_GenomicAlignBlockAdaptor;
+    $all_synteny_regions = $genomic_align_block_adaptor->fetch_all_by_MethodLinkSpeciesSet(
       $method_link_species_set);
+  } else {
+    my $synteny_region_adaptor = $compara_dba->get_SyntenyRegionAdaptor;
+    $all_synteny_regions = $synteny_region_adaptor->fetch_all_by_MethodLinkSpeciesSet(
+      $method_link_species_set);
+  }
 
   return $all_synteny_regions;
 }
@@ -745,8 +767,16 @@ sub print_duplication_stats {
   my $duplications = [];
   foreach my $this_synteny_region (@$all_synteny_regions) {
     my $species;
-    foreach my $this_dnafrag_region (@{$this_synteny_region->get_all_DnaFragRegions()}) {
-      my $species_name = $this_dnafrag_region->genome_db->name;
+    my $objects;
+    if ($this_synteny_region->can("get_all_DnaFragRegions")) {
+      $objects = $this_synteny_region->get_all_DnaFragRegions();
+    } elsif ($this_synteny_region->can("get_all_GenomicAligns")) {
+      $objects = $this_synteny_region->get_all_GenomicAligns();
+    } else {
+      die "Cannot get data from [$this_synteny_region]\n";
+    }
+    foreach my $this_object (@$objects) {
+      my $species_name = $this_object->genome_db->name;
       $species->{$species_name}++;
     }
     foreach my $cardinality (values %$species) {
@@ -766,11 +796,17 @@ sub print_duplication_stats {
     my ($this_synteny_region, $species) = @$object;
     my $duplicated_genome_dbs = {};
 
-    foreach my $this_dnafrag_region (@{$this_synteny_region->get_all_DnaFragRegions()}) {
-      my $species_name = $this_dnafrag_region->genome_db->name;
+    my $objects;
+    if ($this_synteny_region->can("get_all_DnaFragRegions")) {
+      $objects = $this_synteny_region->get_all_DnaFragRegions();
+    } elsif ($this_synteny_region->can("get_all_GenomicAligns")) {
+      $objects = $this_synteny_region->get_all_GenomicAligns();
+    }
+    foreach my $this_object (@$objects) {
+      my $species_name = $this_object->genome_db->name;
       if ($species->{$species_name} > 1) {
-        $duplicated_genome_dbs->{$species_name} = $this_dnafrag_region->genome_db;
-        $duplications_per_species->{$species_name} += $this_dnafrag_region->length;
+        $duplicated_genome_dbs->{$species_name} = $this_object->genome_db;
+        $duplications_per_species->{$species_name} += $this_object->length;
       }
     }
 
