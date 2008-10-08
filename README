@@ -1,21 +1,27 @@
-SyntenyGraph v0.1
+Enredo v0.5
 
 =======================================
  SYNOPSIS
 =======================================
 
-Usage: syntenygraph [options] anchors_file.txt
+Usage: enredo [options] anchors_file.txt
 
 Options:
- --max-gap-length: maximum allowed gap between two anchors
- --min-score: minimum score required to accept a hit
+ --max-gap-length: maximum allowed gap between two anchors (def: 200000)
+ --min-score: minimum score required to accept a hit (def: 0)
 
- --min-length: minimum length of final syntenic block (def: 100000)
- --min-regions: minimum number of region in the syntenic block (def: 2)
- --min-anchors: minimum number of anchors in the syntenic block (def: 3)
- --all: print all the syntenic block (overwrite previous values)
+ --max-path-dissimilarity: merge alternative paths in the graph if their
+      dissimilarity is up to this threshold (def: 4)
+ --simplify-graph: try to split small edges in order to lengthen
+      other blocks. Ranges from 0 (none) to 7 (more aggressive). (def: 7)
 
- --histogram-size: size for histogram of num. of regions per link (def: 10)
+ --min-length: minimum length of valid block (def: 100000)
+ --min-regions: minimum number of regions in a valid block (def: 2)
+ --min-anchors: minimum number of anchors in a valid block (def: 3)
+ --[no]bridges: validate invalid blocks that bridge two valid blocks (def: yes)
+ --all: print all the blocks (overwrite previous values)
+
+ --output: write output to that file (def: STDOUT)
 
  --help: prints this help
 
@@ -69,7 +75,7 @@ C-D-E: G1(8-16)
 C-E: G2(8-14)
 E-F-G: G1(16-24); G2(14-24)
 
-Using this simple operation, we can use the resulting links to define syntenic
+Using this simple operation, we can use the resulting links to define colinear
 regions.
 
 =======================================
@@ -81,13 +87,13 @@ regions.
 --max-gap-length:
 If the distance between two anchors is larger than this value, they wont be
 linked. A value of 0 disable this option.
-Default: 10000
+Default: 20000
 
 --min-score:
 Ignore anchors with a score lower than this value.
 Default: 0
 
-* FOR MINIMIZING THE GRAPH *
+* FOR EDITING THE GRAPH *
 
 --max-path-dissimilarity:
 Allow to merge down paths if their dissimilarity is lower or equal to this
@@ -96,16 +102,14 @@ A--B--C--E--D is one as there is one extra anchor in the second path. In
 this other example: A--B--C--D and A--C--B--D, the dissimilarity is 2 because
 in the second path an extra C has been inserted between A and B, and there is
 a C missing between B and D.
-Default: 0
+Default: 4
 
-* FOR DEFINNING THE SYNTENIC REGIONS *
-
-After concatenating all the links, you can get the resulting syntenic blocks.
+* FOR DEFINNING THE VALID COLINEAR REGIONS *
 
 --min-length:
 Only blocks which are longer than this limit will be printed out. The length
 of the block correspond to the shortest of the sequences in that block.
-Default: 100kb
+Default: 100000
 
 --min-regions:
 Only blocks containing at least this number of sequences will be dumped.
@@ -117,13 +121,10 @@ beginning, the blocks have only two anchors and a new anchor is added in
 each concatenation. The more anchors, the better supported is the block.
 Default: 3
 
---all: print all the syntenic block (overwrite previous values)
+--bridges: validate invalid blocks that bridge two valid blocks (def: yes)
+
+--all: print all the blocks (overwrite previous values)
 Prints everything, even short blocks with one single region.
-
-
-* FOR THE RESULTING STATS *
-
---histogram-size: size for histogram of num. of regions per link (def: 10)
 
 
 =======================================
@@ -167,27 +168,4 @@ C       Spcs2   Y       10187   10218   +       31
 
 At the moment, the strand is ignored but it might be used in a future
 version.
-
-=======================================
- MERGE OVERLAP
-=======================================
-
-* Synopsis *
-
-Usage: mergeoverlap [options] anchors_file.txt
-
-Options:
- --min-score: minimum score required to accept a hit
-
- --output: sets the output filename. Output is sent to the standard output
-      by default.
-
- --help: prints this help
-
-* Description *
-
-This programs read the same input file, look for overalapping anchors and
-merge them. Here again, the anchors must be sorted according to the same
-rules. The output file is similar to the input one except that overlapping
-anchors will share the same anchor id.
 

@@ -33,9 +33,7 @@ perl load_ortheus_pipeline.pl
 
 =head1 REQUIREMENTS
 
-This script uses mysql, mysqldump and mysqlimport programs.
-It requires at least version 4.1.12 of mysqldump as it uses
-the --insert-ignore option.
+This script uses mysql and the Ensembl Perl API.
 
 =head1 ARGUMENTS
 

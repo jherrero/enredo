@@ -1446,9 +1446,9 @@ echo "${ECHO_T}no" >&6
 fi
 
 
-PACKAGE=syntenygraph
+PACKAGE=enredo
 
-VERSION=0.1
+VERSION=0.5
 
 if test "`cd $srcdir && pwd`" != "`pwd`" && test -f $srcdir/config.status; then
   { { echo "$as_me:$LINENO: error: source directory already configured; run \"make distclean\" there first" >&5
