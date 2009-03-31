@@ -23,6 +23,7 @@ perl store_output.pl [options] -i enredo.out
 
 OPTIONS:
  --reg_url mysql://user:pass@host:port [default: -none-]
+ --conf registry_conf_file [default: -none-]
  --compara NAME [default: Multi]
  --db_url mysql://user:pass@host:port/compara_db_name
  --method_link_type TYPE [default: ENREDO]
@@ -35,6 +36,7 @@ OPTIONS:
 
 * reg_url: uses a URL to auto-load the registry (needed to connect to the
     core databases)
+* conf: load the registry from this configuration file if not reg_url is given
 * compara: name of the database in the Registry (should be Multi or compara)
 * db_url: alternatively you can use this way to define the compara
     database you want to use to store the results
@@ -63,6 +65,7 @@ EXAMPLE:
 ';
 
 my $reg_url;
+my $conf_reg;
 my $db_url;
 my $compara = "Multi";
 my $method_link_type = "ENREDO";
@@ -82,6 +85,7 @@ GetOptions(
     "source=s" => \$name,
     "url=s" => \$name,
     "reg_url=s" => \$reg_url,
+    "conf_reg=s" => \$conf_reg,
     "compara=s" => \$compara,
     "db_url=s" => \$db_url,
     "i=s" => \$input_file,
@@ -101,7 +105,10 @@ my $reg = "Bio::EnsEMBL::Registry";
 $reg->no_version_check(1);
 if ($reg_url) {
   $reg->load_registry_from_url($reg_url);
+} else {
+  $reg->load_all($conf_reg);
 }
+
 if ($db_url =~ /mysql\:\/\/([^\@]+\@)?([^\:\/]+)(\:\d+)?(\/\w+)?/) {
   my $user_pass = $1;
   my $host = $2;
